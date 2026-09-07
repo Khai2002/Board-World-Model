@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Board Click Logger (demo)",
+  "version": "0.1",
+  "description": "Minimal demo: logs which cube row was clicked in Board's grid.",
+  "permissions": [
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.board.com/*"
+      ],
+      "js": ["endpoints.js", "utils.js", "entity-tab.js", "assets/board-world-model.js", "procedure-tab.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
