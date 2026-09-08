@@ -6,6 +6,50 @@ const procedureTabOptions = {
   textClass: 'procedure-click-logger-text-wrap',
 };
 
+function normalizeProcedureResponse(data) {
+  const procedure = Array.isArray(data) ? data[0] : data;
+  if (!procedure || typeof procedure !== 'object') {
+    throw new Error('The procedure response is empty.');
+  }
+  return procedure;
+}
+
+async function getProcedureFull(dbName, uniqueId) {
+  const { data } = await callBoardAPI(
+    'getProcedures',
+    { dbname: dbName },
+    [uniqueId],
+  );
+  const procedure = normalizeProcedureResponse(data);
+
+  const procedureGroups = await Promise.all(
+    (procedure.procedureGroups ?? []).map(async (group) => ({
+      ...group,
+      steps: await Promise.all(
+        (group.steps ?? []).map(async (step) => {
+          if (!Array.isArray(step.configuredLayoutIds) || step.configuredLayoutIds.length === 0) {
+            return step;
+          }
+
+          const { data: layouts } = await callBoardAPI(
+            'layoutEditorProcedureGetBlockLayout',
+            {
+              dbname: dbName,
+              procedureId: uniqueId,
+              actionId: step.id,
+              isNotSaved: false,
+            },
+          );
+
+          return { ...step, layouts };
+        }),
+      ),
+    })),
+  );
+
+  return { ...procedure, procedureGroups };
+}
+
 async function populateProcedureOverlay(panelEl, overlay) {
   const procedurePanel = panelEl.querySelector('brd-procedures-panel');
   const procedureName = procedurePanel
@@ -30,18 +74,13 @@ async function populateProcedureOverlay(panelEl, overlay) {
       return;
     }
 
-    const { data: procedureDetails } = await callBoardAPI('getProcedures', { dbname: modelPath }, [procedure.name]);
+    const procedureDetails = await getProcedureFull(modelPath, procedure.name);
     const procedureJson = JSON.stringify(procedureDetails, null, 2) ?? 'undefined';
     const recursiveModel = await window.BoardWorldModel.createRecursiveProcedureModel(
       procedures,
       procedureDetails,
       async (identifier) => {
-        const { data } = await callBoardAPI(
-          'getProcedures',
-          { dbname: modelPath },
-          [identifier.name],
-        );
-        return data;
+        return getProcedureFull(modelPath, identifier.name);
       },
     );
     const { procedure: parsedProcedure, proceduresToExecute } = recursiveModel;
@@ -171,8 +210,8 @@ async function populateProcedureOverlay(panelEl, overlay) {
     overlay.appendChild(info);
     overlay.appendChild(calledLabel);
     overlay.appendChild(calledList);
-    // overlay.appendChild(jsonLabel);
-    // overlay.appendChild(jsonOutput);
+    overlay.appendChild(jsonLabel);
+    overlay.appendChild(jsonOutput);
   } catch (error) {
     console.error('[Board Click Logger] Could not load Procedure information:', error);
     overlay.textContent = `Could not load Procedure information: ${error.message}`;

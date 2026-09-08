@@ -8,6 +8,8 @@ export type StepJSON = {
     name: string
     id: string
     databaseName: string
+    configuredLayoutIds?: string[]
+    layouts?: unknown
 
     // Depending on the discriminator, additional fields can exist
     procedureToExecute?: ProcedureIdentifier

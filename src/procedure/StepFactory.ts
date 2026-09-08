@@ -9,6 +9,8 @@ export default interface Step {
     name: string,
     id: string,
     databaseName: string,
+    configuredLayoutIds?: string[],
+    layouts?: unknown,
 }
 
 export default class StepFactory {
