@@ -6,6 +6,93 @@ const procedureTabOptions = {
   textClass: 'procedure-click-logger-text-wrap',
 };
 
+const procedureListStyleId = 'board-world-model-procedure-list-styles';
+
+function ensureProcedureListStyles() {
+  if (document.getElementById(procedureListStyleId)) return;
+
+  const style = document.createElement('style');
+  style.id = procedureListStyleId;
+  style.textContent = `
+    .procedure-list {
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .procedure-item {
+      margin-bottom: 16px;
+    }
+
+    .procedure-summary {
+      padding: 4px 6px;
+      border-radius: 3px;
+      color: #202124;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.4;
+      transition: background-color 120ms ease;
+    }
+
+    .procedure-summary:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .procedure-child-list {
+      margin: 8px 0 0 20px;
+      padding-left: 18px;
+      list-style: none;
+    }
+
+    .procedure-written {
+      margin-top: 7px;
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    .procedure-cube {
+      color: #4b5563;
+      font-weight: 500;
+    }
+
+    .procedure-cube-list {
+      margin: 4px 0 0 16px;
+      padding-left: 16px;
+    }
+
+    .procedure-cube-item {
+      padding-left: 2px;
+    }
+
+    .procedure-copy-button {
+      align-self: flex-start;
+      width: max-content;
+      margin-top: 16px;
+      cursor: pointer;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      background: #fff;
+      padding: 6px 10px;
+    }
+
+    .procedure-link {
+      margin-left: 6px;
+      color: #6b7280;
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    .procedure-link:hover {
+      color: #202124;
+      text-decoration: underline;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function normalizeProcedureResponse(data) {
   const procedure = Array.isArray(data) ? data[0] : data;
   if (!procedure || typeof procedure !== 'object') {
@@ -51,6 +138,8 @@ async function getProcedureFull(dbName, uniqueId) {
 }
 
 async function populateProcedureOverlay(panelEl, overlay) {
+  ensureProcedureListStyles();
+
   const procedurePanel = panelEl.querySelector('brd-procedures-panel');
   const procedureName = procedurePanel
     ?.querySelector('brd-panel-toolbar .title .procedure-click-logger-text-wrap')
@@ -68,7 +157,11 @@ async function populateProcedureOverlay(panelEl, overlay) {
     const { data: procedures } = await callBoardAPI('getCoreProcedures', {
       dbname: modelPath,
     });
-    const procedure = procedures.find((item) => item.description === procedureName);
+    const proceduresWithUrls = procedures.map((item) => ({
+      ...item,
+      url: `${window.location.origin}/data-models/${encodeURIComponent(modelPath)}/procedures/${encodeURIComponent(item.uniqueId ?? item.name)}`,
+    }));
+    const procedure = proceduresWithUrls.find((item) => item.description === procedureName);
     if (!procedure) {
       overlay.textContent = `No Procedure was found for "${procedureName}".`;
       return;
@@ -91,39 +184,26 @@ async function populateProcedureOverlay(panelEl, overlay) {
     const writtenDataflowBlocks = window.BoardWorldModel.getWrittenDataflowBlocks(
       proceduresToDisplay.map(({ procedure: listedProcedure }) => listedProcedure),
     );
+    const writtenDataflowBlocksWithUrls = writtenDataflowBlocks.map((item) => ({
+      ...item,
+      url: `${window.location.origin}/data-models/${encodeURIComponent(modelPath)}/cubes/${encodeURIComponent(item.block.cubeIdx)}`,
+    }));
     console.log('[Board Click Logger] Written dataflow blocks:', writtenDataflowBlocks);
     const writtenBlocksByProcedure = new Map();
-    writtenDataflowBlocks.forEach(({ procedureKey, detail, block }) => {
+    writtenDataflowBlocksWithUrls.forEach(({ procedureKey, detail, block, url }) => {
       const blocks = writtenBlocksByProcedure.get(procedureKey) ?? [];
-      blocks.push({ detail, block });
+      if (blocks.some((writtenBlock) => writtenBlock.block.cubeIdx === block.cubeIdx)) return;
+
+      blocks.push({ detail, block, url });
       writtenBlocksByProcedure.set(procedureKey, blocks);
     });
 
 
     overlay.innerHTML = '';
-    const headingRow = document.createElement('div');
-    Object.assign(headingRow.style, {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '12px',
-      marginBottom: '12px',
-    });
-
-    const heading = document.createElement('h3');
-    heading.textContent = 'Procedure Information';
-    heading.style.margin = '0';
-
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
+    copyButton.className = 'procedure-copy-button';
     copyButton.textContent = 'Copy JSON';
-    Object.assign(copyButton.style, {
-      cursor: 'pointer',
-      border: '1px solid #bbb',
-      borderRadius: '4px',
-      background: '#fff',
-      padding: '6px 10px',
-    });
     copyButton.addEventListener('click', async (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -165,12 +245,10 @@ async function populateProcedureOverlay(panelEl, overlay) {
 
     const calledLabel = document.createElement('h3');
     calledLabel.textContent = 'Procedures to execute';
-    calledLabel.style.margin = '20px 0 8px 0';
+    calledLabel.style.margin = '0 0 8px 0';
 
     const calledList = document.createElement('ul');
-    calledList.style.margin = '0';
-    calledList.style.paddingLeft = '0';
-    calledList.style.listStyleType = 'none';
+    calledList.className = 'procedure-list';
     {
       const listStack = [{ depth: -1, list: calledList }];
 
@@ -181,35 +259,55 @@ async function populateProcedureOverlay(panelEl, overlay) {
         const details = document.createElement('details');
         const summary = document.createElement('summary');
         const childList = document.createElement('ul');
+        const procedureUrl = calledProcedure.url
+          ?? `${window.location.origin}/data-models/${encodeURIComponent(modelPath)}/procedures/${encodeURIComponent(calledProcedure.uniqueId ?? calledProcedure.name)}`;
         const writtenBlocks = writtenBlocksByProcedure.get(
           `${calledProcedure.defaultDatabase}:${calledProcedure.name}`,
         ) ?? [];
 
         summary.textContent = `${index + 1}. ${calledProcedure.description}${depth === 0 ? ' (root)' : ''}`;
-        summary.style.cursor = 'pointer';
-        summary.style.fontWeight = '600';
+        summary.className = 'procedure-summary';
+        const procedureLink = document.createElement('a');
+        procedureLink.className = 'procedure-link';
+        procedureLink.href = procedureUrl;
+        procedureLink.target = '_blank';
+        procedureLink.rel = 'noopener noreferrer';
+        procedureLink.textContent = '[open]';
+        procedureLink.title = `Open ${calledProcedure.description}`;
+        procedureLink.addEventListener('click', (event) => event.stopPropagation());
+        summary.appendChild(procedureLink);
         details.open = true;
         details.appendChild(summary);
-        item.style.marginBottom = '10px';
-        childList.style.margin = '8px 0 0 8px';
-        childList.style.paddingLeft = '16px';
-        childList.style.listStyleType = 'none';
+        item.className = 'procedure-item';
+        childList.className = 'procedure-child-list';
 
-        const writtenItem = document.createElement('li');
-        writtenItem.style.marginTop = '6px';
-        if (writtenBlocks.length === 0) {
-          writtenItem.textContent = 'Writes to no cube.';
-        } else {
+        if (writtenBlocks.length > 0) {
+          const writtenItem = document.createElement('li');
+          writtenItem.className = 'procedure-written';
           writtenItem.textContent = 'Writes to: ';
-          writtenBlocks.forEach(({ detail, block }, blockIndex) => {
-            if (blockIndex > 0) writtenItem.appendChild(document.createTextNode(', '));
+          const cubeList = document.createElement('ul');
+          cubeList.className = 'procedure-cube-list';
+          writtenBlocks.forEach(({ detail, block, url }) => {
+            const cubeItem = document.createElement('li');
+            cubeItem.className = 'procedure-cube-item';
             const cube = document.createElement('span');
-            cube.textContent = `${detail} (cube ${block.cubeIdx})`;
+            cube.className = 'procedure-cube';
+            cube.textContent = `${block.cubeIdx}: ${detail.split('=')[0]}`;
             cube.title = detail;
-            writtenItem.appendChild(cube);
+            cubeItem.appendChild(cube);
+            const cubeLink = document.createElement('a');
+            cubeLink.className = 'procedure-link';
+            cubeLink.href = url;
+            cubeLink.target = '_blank';
+            cubeLink.rel = 'noopener noreferrer';
+            cubeLink.textContent = '[open]';
+            cubeLink.title = `Open cube ${block.cubeIdx}`;
+            cubeItem.appendChild(cubeLink);
+            cubeList.appendChild(cubeItem);
           });
+          writtenItem.appendChild(cubeList);
+          childList.appendChild(writtenItem);
         }
-        childList.appendChild(writtenItem);
 
         details.appendChild(childList);
         item.appendChild(details);
@@ -234,14 +332,12 @@ async function populateProcedureOverlay(panelEl, overlay) {
       lineHeight: '1.5',
     });
 
-    headingRow.appendChild(heading);
-    headingRow.appendChild(copyButton);
-    overlay.appendChild(headingRow);
-    overlay.appendChild(info);
+    // overlay.appendChild(info);
     overlay.appendChild(calledLabel);
     overlay.appendChild(calledList);
-    overlay.appendChild(jsonLabel);
-    overlay.appendChild(jsonOutput);
+    overlay.appendChild(copyButton);
+    // overlay.appendChild(jsonLabel);
+    // overlay.appendChild(jsonOutput);
   } catch (error) {
     console.error('[Board Click Logger] Could not load Procedure information:', error);
     overlay.textContent = `Could not load Procedure information: ${error.message}`;
