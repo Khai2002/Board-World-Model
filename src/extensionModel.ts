@@ -1,8 +1,10 @@
 import Procedure from "./procedure/Procedure"
 import ProcedurePlaceholder from "./procedure/ProcedurePlaceholder"
 import CallProcedureStep from "./procedure/step/CallProcedureStep"
+import type { DataflowBlock } from "./procedure/step/DataflowStep"
 import { ProcedureRegistry, type ProcedureIdentifier } from "./procedure/ProcedureRegistry"
 import type { ProcedureJSON, ProcedureMetadataJSON } from "./utils/json"
+import DataflowStep from "./procedure/step/DataflowStep"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -21,6 +23,24 @@ export type RecursiveProcedureModel = {
 export type ProcedureExecution = {
     procedure: Procedure
     depth: number
+}
+
+export type WrittenDataflowBlock = {
+    procedureKey: string
+    detail: string
+    block: DataflowBlock
+}
+
+export function getWrittenDataflowBlocks(procedures: Procedure[]): WrittenDataflowBlock[] {
+    return procedures.flatMap(procedure =>
+        procedure.getStepsByType(DataflowStep).map(step => ({
+            procedureKey: procedureKey(procedure),
+            detail: step.detail,
+            block: step.getTargetBlock(),
+        })).filter(
+            result => result.block.cubeIdx !== -1
+        )
+    )
 }
 
 function asProcedureList(data: unknown): ProcedureMetadataJSON[] {
@@ -111,6 +131,7 @@ declare global {
         BoardWorldModel: {
             createProcedureModel: typeof createProcedureModel
             createRecursiveProcedureModel: typeof createRecursiveProcedureModel
+            getWrittenDataflowBlocks: typeof getWrittenDataflowBlocks
         }
     }
 }
@@ -118,4 +139,5 @@ declare global {
 window.BoardWorldModel = {
     createProcedureModel,
     createRecursiveProcedureModel,
+    getWrittenDataflowBlocks,
 }

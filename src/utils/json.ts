@@ -1,4 +1,5 @@
 import type { ProcedureIdentifier } from "../procedure/ProcedureRegistry"
+import type { DataflowLayout } from "../procedure/step/DataflowStep"
 
 export type StepJSON = {
     discriminator: string
@@ -9,10 +10,14 @@ export type StepJSON = {
     id: string
     databaseName: string
     configuredLayoutIds?: string[]
-    layouts?: unknown
+    layouts?: DataflowLayout[]
 
-    // Depending on the discriminator, additional fields can exist
+    // Specific to Call Procedure Step
     procedureToExecute?: ProcedureIdentifier
+
+    // Specific to Dataflow Step
+    expression?: string
+    targetLetter?: string
 }
 
 export type ProcedureGroupJSON = {

@@ -84,6 +84,20 @@ async function populateProcedureOverlay(panelEl, overlay) {
       },
     );
     const { procedure: parsedProcedure, proceduresToExecute } = recursiveModel;
+    const proceduresToDisplay = [
+      { procedure: parsedProcedure, depth: 0 },
+      ...proceduresToExecute,
+    ];
+    const writtenDataflowBlocks = window.BoardWorldModel.getWrittenDataflowBlocks(
+      proceduresToDisplay.map(({ procedure: listedProcedure }) => listedProcedure),
+    );
+    console.log('[Board Click Logger] Written dataflow blocks:', writtenDataflowBlocks);
+    const writtenBlocksByProcedure = new Map();
+    writtenDataflowBlocks.forEach(({ procedureKey, detail, block }) => {
+      const blocks = writtenBlocksByProcedure.get(procedureKey) ?? [];
+      blocks.push({ detail, block });
+      writtenBlocksByProcedure.set(procedureKey, blocks);
+    });
 
 
     overlay.innerHTML = '';
@@ -157,22 +171,21 @@ async function populateProcedureOverlay(panelEl, overlay) {
     calledList.style.margin = '0';
     calledList.style.paddingLeft = '0';
     calledList.style.listStyleType = 'none';
-    if (proceduresToExecute.length === 0) {
-      const emptyItem = document.createElement('li');
-      emptyItem.textContent = 'This procedure does not call another procedure.';
-      calledList.appendChild(emptyItem);
-    } else {
-      const listStack = [{ depth: 0, list: calledList }];
+    {
+      const listStack = [{ depth: -1, list: calledList }];
 
-      proceduresToExecute.forEach(({ procedure: calledProcedure, depth }, index) => {
+      proceduresToDisplay.forEach(({ procedure: calledProcedure, depth }, index) => {
         while (listStack.at(-1).depth >= depth) listStack.pop();
 
         const item = document.createElement('li');
         const details = document.createElement('details');
         const summary = document.createElement('summary');
         const childList = document.createElement('ul');
+        const writtenBlocks = writtenBlocksByProcedure.get(
+          `${calledProcedure.defaultDatabase}:${calledProcedure.name}`,
+        ) ?? [];
 
-        summary.textContent = `${index + 1}. ${calledProcedure.description}`;
+        summary.textContent = `${index + 1}. ${calledProcedure.description}${depth === 0 ? ' (root)' : ''}`;
         summary.style.cursor = 'pointer';
         summary.style.fontWeight = '600';
         details.open = true;
@@ -181,6 +194,23 @@ async function populateProcedureOverlay(panelEl, overlay) {
         childList.style.margin = '8px 0 0 8px';
         childList.style.paddingLeft = '16px';
         childList.style.listStyleType = 'none';
+
+        const writtenItem = document.createElement('li');
+        writtenItem.style.marginTop = '6px';
+        if (writtenBlocks.length === 0) {
+          writtenItem.textContent = 'Writes to no cube.';
+        } else {
+          writtenItem.textContent = 'Writes to: ';
+          writtenBlocks.forEach(({ detail, block }, blockIndex) => {
+            if (blockIndex > 0) writtenItem.appendChild(document.createTextNode(', '));
+            const cube = document.createElement('span');
+            cube.textContent = `${detail} (cube ${block.cubeIdx})`;
+            cube.title = detail;
+            writtenItem.appendChild(cube);
+          });
+        }
+        childList.appendChild(writtenItem);
+
         details.appendChild(childList);
         item.appendChild(details);
         listStack.at(-1).list.appendChild(item);
