@@ -2,37 +2,24 @@ const statusDot = document.getElementById("statusDot");
 const statusLine = document.getElementById("statusLine");
 const output = document.getElementById("output");
 const meta = document.getElementById("meta");
-const dbnameInput = document.getElementById("dbname");
+const modelLine = document.getElementById("modelLine");
 
-const buttons = {
-  btnClientInfo: () => call("getClientInfo", {}),
-  btnDatabases: () => call("getDatabasesDefinitions", {}),
-  btnEntities: () => call("getAllEntities", { dbname: requireDb() }),
-  btnCubes: () => call("getAllCubes", { dbname: requireDb() }),
-  btnProcedures: () => call("getCoreProcedures", { dbname: requireDb() }),
-};
-
-for (const [id, handler] of Object.entries(buttons)) {
-  document.getElementById(id).addEventListener("click", async () => {
-    try {
-      await handler();
-    } catch (e) {
-      renderError(e.message);
-    }
-  });
-}
-
-function requireDb() {
-  const v = dbnameInput.value.trim();
-  if (!v) {
-    throw new Error("Enter a dbName first.");
-  }
-  return v;
-}
+document.getElementById("btnConnection").addEventListener("click", checkConnection);
+document.getElementById("btnCubes").addEventListener("click", saveCubes);
+document.getElementById("btnDashboard").addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+});
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
+}
+
+async function getModelId() {
+  const tab = await getActiveTab();
+  const match = tab?.url?.match(/\/data-models\/([^/]+)(?:\/|$)/);
+  if (!match) throw new Error("Open a Board data model page first.");
+  return decodeURIComponent(match[1]);
 }
 
 function sendToContentScript(message) {
@@ -69,6 +56,17 @@ async function refreshStatus() {
   }
 }
 
+async function checkConnection() {
+  await refreshStatus();
+  if (statusDot.className !== "ok") return;
+
+  try {
+    await call("getClientInfo", {});
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
 async function call(endpoint, params) {
   output.className = "";
   output.textContent = "…";
@@ -86,6 +84,41 @@ async function call(endpoint, params) {
   output.className = "";
   output.textContent = JSON.stringify(data, null, 2);
   meta.textContent = `${method} ${url}  ·  v${version}  ·  auth: ${tokenFound ? "bearer token" : "cookies only"}`;
+}
+
+function normalizeCubeList(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.cubes)) return data.cubes;
+  return [];
+}
+
+async function saveCubes() {
+  try {
+    const modelId = await getModelId();
+    const response = await sendToContentScript({
+      type: "CALL",
+      endpoint: "getAllCubes",
+      params: { dbname: modelId },
+    });
+    if (!response?.success) throw new Error(response?.error || "Could not get cubes.");
+
+    const cubes = normalizeCubeList(response.result.data);
+    const db = window.BoardWorldModel.openCubeDatabase();
+    await db.cubes.bulkPut(cubes.map((cube) => ({
+      id: `${modelId}:${cube.idx}`,
+      modelId,
+      cubeId: cube.idx,
+      name: cube.extended,
+      data: cube,
+    })));
+    modelLine.textContent = `${modelId} · ${cubes.length} cubes stored`;
+    output.className = "";
+    output.textContent = JSON.stringify(cubes, null, 2);
+    meta.textContent = `${response.result.method} ${response.result.url}`;
+  } catch (error) {
+    renderError(error.message);
+  }
 }
 
 function renderError(msg) {

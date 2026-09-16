@@ -5,6 +5,7 @@ import type { DataflowBlock } from "./procedure/step/DataflowStep"
 import { ProcedureRegistry, type ProcedureIdentifier } from "./procedure/ProcedureRegistry"
 import type { ProcedureJSON, ProcedureMetadataJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
+import CubeDatabase from "./cube/CubeDatabase"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -41,6 +42,10 @@ export function getWrittenDataflowBlocks(procedures: Procedure[]): WrittenDatafl
             result => result.block.cubeIdx !== -1
         )
     )
+}
+
+export function openCubeDatabase(): CubeDatabase {
+    return new CubeDatabase()
 }
 
 function asProcedureList(data: unknown): ProcedureMetadataJSON[] {
@@ -132,6 +137,8 @@ declare global {
             createProcedureModel: typeof createProcedureModel
             createRecursiveProcedureModel: typeof createRecursiveProcedureModel
             getWrittenDataflowBlocks: typeof getWrittenDataflowBlocks
+            CubeDatabase: typeof CubeDatabase
+            openCubeDatabase: typeof openCubeDatabase
         }
     }
 }
@@ -140,4 +147,6 @@ window.BoardWorldModel = {
     createProcedureModel,
     createRecursiveProcedureModel,
     getWrittenDataflowBlocks,
+    CubeDatabase,
+    openCubeDatabase,
 }

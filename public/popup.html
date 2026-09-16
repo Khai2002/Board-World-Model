@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Board API Bridge</title>
+<title>Cube Model</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -10,7 +10,7 @@
     --border: #22303c;
     --text: #d6e2ea;
     --muted: #7a8b98;
-    --accent: #4fc3a1;
+    --accent: #32bef0;
     --accent-dim: #2c5c4f;
     --error: #e5646a;
     --font-mono: "SF Mono", "JetBrains Mono", "Consolas", monospace;
@@ -140,27 +140,25 @@
 </head>
 <body>
   <header>
-    <h1>board<span>::</span>bridge</h1>
+    <h1>cube<span>::</span>model</h1>
     <div id="statusDot" title="connection status"></div>
   </header>
 
   <div id="statusLine">checking page…</div>
 
   <div class="section">
-    <label for="dbname">dbName</label>
-    <input type="text" id="dbname" placeholder="e.g. MyDatabase" />
+    <div id="modelLine">detecting data model…</div>
     <div class="btn-grid">
-      <button class="full" id="btnClientInfo">check connection</button>
-      <button id="btnDatabases">list databases</button>
-      <button id="btnEntities">get entities</button>
-      <button id="btnCubes">get cubes</button>
-      <button id="btnProcedures">core procedures</button>
+      <button class="full" id="btnConnection">refresh connection</button>
+      <button class="full" id="btnCubes">get all cubes</button>
+      <button class="full" id="btnDashboard">open dashboard</button>
     </div>
   </div>
 
   <pre id="output"></pre>
   <div id="meta"></div>
 
+  <script src="assets/board-world-model.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

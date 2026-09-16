@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cube Model Dashboard</title>
+  <style>
+    body { margin: 32px; color: #202124; font: 14px system-ui, sans-serif; }
+    h1 { margin-top: 0; }
+    #status { color: #5f6368; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    button, select { padding: 6px 8px; font: inherit; }
+    button { cursor: pointer; }
+    .danger { color: #a50e0e; }
+    li { margin: 8px 0; }
+    code { color: #174ea6; }
+  </style>
+</head>
+<body>
+  <h1>Cube Model</h1>
+  <p id="status">Reading stored cubes…</p>
+  <div class="actions">
+    <button id="exportButton" type="button">Export JSON</button>
+    <button id="importButton" type="button">Import JSON</button>
+    <input id="importInput" type="file" accept="application/json,.json" hidden>
+    <select id="modelSelect" aria-label="Model to delete">
+      <option value="">Select a model</option>
+    </select>
+    <button id="deleteModelButton" type="button">Delete selected model</button>
+    <button id="deleteAllButton" class="danger" type="button">Delete all local data</button>
+  </div>
+  <ul id="cubes"></ul>
+  <script src="assets/board-world-model.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
