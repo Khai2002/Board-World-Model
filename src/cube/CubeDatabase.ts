@@ -23,6 +23,10 @@ export default class CubeDatabase extends Dexie {
     cubes!: EntityTable<CubeNode, "id">
     cubeEdges!: EntityTable<CubeEdge, "id">
 
+    static getId(modelId: string, cubeId: string | number): string {
+        return `${modelId}:${cubeId}`
+    }
+
     constructor(name = "cube-model") {
         super(name)
 

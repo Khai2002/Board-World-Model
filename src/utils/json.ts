@@ -27,7 +27,6 @@ export type ProcedureGroupJSON = {
     id: string
 }
 
-
 export type ProcedureJSON = {
   procedureBehaviour: number
   procedureWindowEnum: number
