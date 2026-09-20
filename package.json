@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --config vite.extension.config.ts",
+    "build": "tsc && vite build --config vite.extension.config.ts && vite build --config vite.background.config.ts",
     "preview": "vite preview"
   },
   "devDependencies": {

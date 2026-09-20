@@ -68,14 +68,6 @@ class BoardApiClient {
     return data;
   }
 
-  async getCubeImpact(modelId, cubeId) {
-    const { data } = await this.request('getCubeImpact', {
-      dbname: modelId,
-      uniqueId: cubeId,
-    });
-    return data;
-  }
-
   async getProcedureDetails(modelId, procedureId) {
     if (Array.isArray(procedureId)) {
       return Promise.all(

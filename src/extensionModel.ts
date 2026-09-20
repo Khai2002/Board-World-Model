@@ -1,16 +1,19 @@
 import Procedure from "./procedure/Procedure"
-import ProcedurePlaceholder from "./procedure/ProcedurePlaceholder"
 import CallProcedureStep from "./procedure/step/CallProcedureStep"
 import type { DataflowBlock } from "./procedure/step/DataflowStep"
-import { ProcedureRegistry, type ProcedureIdentifier } from "./procedure/ProcedureRegistry"
-import type { ProcedureJSON, ProcedureMetadataJSON } from "./utils/json"
+import type { ProcedureJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
 
 type ProcedureModel = {
     procedure: Procedure
-    proceduresToExecute: Array<Procedure | ProcedurePlaceholder>
+    proceduresToExecute: Procedure[]
+}
+
+export type ProcedureIdentifier = {
+    name: string
+    defaultDatabase: string
 }
 
 export type ProcedureLoader = (
@@ -53,71 +56,44 @@ export function openProcedureDatabase(): ProcedureDatabase {
     return new ProcedureDatabase()
 }
 
-function asProcedureList(data: unknown): ProcedureMetadataJSON[] {
-    if (!Array.isArray(data)) {
-        throw new Error("The core procedure response is not a list")
-    }
-
-    return data as ProcedureMetadataJSON[]
-}
-
 function asProcedureJSON(data: unknown): ProcedureJSON {
     const procedureData = Array.isArray(data) ? data[0] : data
     if (!procedureData || typeof procedureData !== "object") {
-        throw new Error("The procedure response is empty")
+        throw new Error(
+            "Procedure details are not saved. Scan and save procedures in the popup menu first."
+        )
     }
 
     return procedureData as ProcedureJSON
 }
 
-export function createProcedureModel(
-    proceduresData: unknown,
+export async function createProcedureModel(
+    source: ProcedureDatabase | ProcedureLoader,
     procedureData: unknown,
-): ProcedureModel {
-    const registry = new ProcedureRegistry()
-    for (const procedure of asProcedureList(proceduresData)) {
-        registry.register(ProcedurePlaceholder.fromJSON(procedure))
-    }
-
+): Promise<ProcedureModel> {
+    const loadProcedure = asProcedureLoader(source)
     const procedure = Procedure.fromJSON(asProcedureJSON(procedureData))
-    registry.register(procedure)
-
-    const proceduresToExecute = procedure
-        .getStepsByType(CallProcedureStep)
-        .map(step => step.getProcedureToExecute(registry))
+    const proceduresToExecute = await Promise.all(
+        procedure
+            .getStepsByType(CallProcedureStep)
+            .map(step => getStoredProcedure(loadProcedure, step.procedureToExecute))
+    )
 
     return { procedure, proceduresToExecute }
 }
 
 export async function createRecursiveProcedureModel(
-    proceduresData: unknown,
+    source: ProcedureDatabase | ProcedureLoader,
     procedureData: unknown,
-    loadProcedure: ProcedureLoader,
 ): Promise<RecursiveProcedureModel> {
-    const registry = new ProcedureRegistry()
-    for (const procedure of asProcedureList(proceduresData)) {
-        registry.register(ProcedurePlaceholder.fromJSON(procedure))
-    }
-
+    const loadProcedure = asProcedureLoader(source)
     const rootProcedure = Procedure.fromJSON(asProcedureJSON(procedureData))
-    registry.register(rootProcedure)
-
     const loaded = new Set<string>([procedureKey(rootProcedure)])
     const proceduresToExecute: ProcedureExecution[] = []
 
-    async function resolveProcedure(identifier: ProcedureIdentifier): Promise<Procedure> {
-        const existing = registry.get(identifier)
-        if (existing?.kind === "procedure") return existing
-
-        const loadedData = await loadProcedure(identifier)
-        const procedure = Procedure.fromJSON(asProcedureJSON(loadedData))
-        registry.register(procedure)
-        return procedure
-    }
-
     async function visitProcedure(procedure: Procedure, depth: number): Promise<void> {
         for (const step of procedure.getStepsByType(CallProcedureStep)) {
-            const calledProcedure = await resolveProcedure(step.procedureToExecute)
+            const calledProcedure = await getStoredProcedure(loadProcedure, step.procedureToExecute)
             const key = procedureKey(calledProcedure)
             if (loaded.has(key)) continue
 
@@ -130,6 +106,30 @@ export async function createRecursiveProcedureModel(
     await visitProcedure(rootProcedure, 1)
 
     return { procedure: rootProcedure, proceduresToExecute }
+}
+
+async function getStoredProcedure(
+    loadProcedure: ProcedureLoader,
+    identifier: ProcedureIdentifier,
+): Promise<Procedure> {
+    const procedureData = await loadProcedure(identifier)
+    if (!procedureData) {
+        throw new Error(
+            `Procedure ${identifier.name} does not have saved details. Scan and save procedures in the popup menu first.`
+        )
+    }
+
+    return Procedure.fromJSON(asProcedureJSON(procedureData))
+}
+
+function asProcedureLoader(
+    source: ProcedureDatabase | ProcedureLoader,
+): ProcedureLoader {
+    if (typeof source === "function") return source
+
+    return async identifier => source.procedures.get(
+        ProcedureDatabase.getId(identifier)
+    )
 }
 
 function procedureKey(procedure: Procedure): string {

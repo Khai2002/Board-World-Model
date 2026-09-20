@@ -26,6 +26,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // keep the message channel open for the async response
   }
 
+  if (message?.type === "GET_PROCEDURE_FULL") {
+    boardApi.getProcedureDetails(message.dbName, message.uniqueId)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) =>
+        sendResponse({
+          success: false,
+          error: err.message,
+          status: err.status,
+          body: err.body,
+        })
+      );
+    return true;
+  }
+
   return false;
 });
 

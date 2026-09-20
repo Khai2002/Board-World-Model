@@ -9,12 +9,15 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [
         "https://*.board.com/*"
       ],
-      "js": ["endpoints.js", "utils.js", "board-api.js", "entity-tab.js", "assets/board-world-model.js", "procedure-tab.js", "content.js"],
+      "js": ["endpoints.js", "utils.js", "board-api.js", "cube-tab.js", "assets/board-world-model.js", "procedure-tab.js", "content.js"],
       "run_at": "document_idle"
     }
   ]

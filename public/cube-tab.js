@@ -1,19 +1,31 @@
-// Entity custom tab.
+// Cube custom tab.
 
-const entityTabOptions = {
+const cubeTabOptions = {
   overlaySelector: '.board-click-logger-overlay',
   buttonSelector: '.board-click-logger-tab-toggle',
   textClass: 'board-click-logger-text-wrap',
 };
 
-function normalizeCubeList(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.cubes)) return data.cubes;
-  return [];
+function loadCube(modelId, name) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { type: 'GET_CUBE', modelId, name },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        if (!response?.success) {
+          reject(new Error(response?.error || 'Could not load saved cube.'));
+          return;
+        }
+        resolve(response.data);
+      },
+    );
+  });
 }
 
-async function populateEntityOverlay(panelEl, overlay) {
+async function populateCubeOverlay(panelEl, overlay) {
   const cubePanel = panelEl.querySelector('brd-cubes-panel');
   const cubeName = cubePanel
     ?.querySelector('brd-panel-toolbar .title .board-click-logger-text-wrap')
@@ -23,7 +35,7 @@ async function populateEntityOverlay(panelEl, overlay) {
     ?.value;
   const selectedCubeName = cubeName || nameFieldValue?.trim();
 
-  overlay.innerHTML = '<div>Loading cube impact analysis...</div>';
+  overlay.innerHTML = '<div>Loading saved cube...</div>';
 
   const modelPath = window.location.pathname.match(/\/data-models\/([^/]+)\/cubes(?:\/|$)/)?.[1];
   if (!modelPath || !selectedCubeName) {
@@ -32,17 +44,15 @@ async function populateEntityOverlay(panelEl, overlay) {
   }
 
   try {
-    const cubes = normalizeCubeList(await boardApi.getAllCubes(modelPath));
-    const cube = cubes.find((item) => item.extended?.trim?.() === selectedCubeName);
-    const cubeIdx = cube?.idx;
+    const cube = await loadCube(modelPath, selectedCubeName);
+    const cubeIdx = cube?.cubeId;
 
     if (!cube || cubeIdx === undefined || cubeIdx === null) {
       overlay.textContent = `No Cube was found for "${selectedCubeName}".`;
       return;
     }
 
-    const impactAnalysis = await boardApi.getCubeImpact(modelPath, cubeIdx);
-    const impactJson = JSON.stringify(impactAnalysis, null, 2) ?? 'undefined';
+    const cubeJson = JSON.stringify(cube.data, null, 2) ?? 'undefined';
 
     overlay.innerHTML = '';
 
@@ -75,10 +85,10 @@ async function populateEntityOverlay(panelEl, overlay) {
 
       try {
         if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(impactJson);
+          await navigator.clipboard.writeText(cubeJson);
         } else {
           const textArea = document.createElement('textarea');
-          textArea.value = impactJson;
+          textArea.value = cubeJson;
           textArea.style.position = 'fixed';
           textArea.style.opacity = '0';
           document.body.appendChild(textArea);
@@ -89,18 +99,18 @@ async function populateEntityOverlay(panelEl, overlay) {
         copyButton.textContent = 'Copied';
         setTimeout(() => { copyButton.textContent = 'Copy JSON'; }, 1500);
       } catch (error) {
-        console.error('[Board Click Logger] Could not copy cube impact JSON:', error);
+        console.error('[Board Click Logger] Could not copy cube JSON:', error);
         copyButton.textContent = 'Copy failed';
         setTimeout(() => { copyButton.textContent = 'Copy JSON'; }, 1500);
       }
     });
 
     const jsonLabel = document.createElement('h4');
-    jsonLabel.textContent = 'Cube impact analysis JSON';
+    jsonLabel.textContent = 'Cube JSON';
     jsonLabel.style.margin = '20px 0 8px 0';
 
     const jsonOutput = document.createElement('pre');
-    jsonOutput.textContent = impactJson;
+    jsonOutput.textContent = cubeJson;
     Object.assign(jsonOutput.style, {
       margin: '0',
       padding: '12px',
@@ -120,13 +130,13 @@ async function populateEntityOverlay(panelEl, overlay) {
     overlay.appendChild(jsonLabel);
     overlay.appendChild(jsonOutput);
   } catch (error) {
-    console.error('[Board Click Logger] Could not load Cube impact analysis:', error);
-    overlay.textContent = `Could not load Cube impact analysis: ${error.message}`;
+    console.error('[Board Click Logger] Could not load saved cube:', error);
+    overlay.textContent = `Could not load saved cube: ${error.message}`;
   }
 }
 
-function injectEntityTab(panelEl) {
-  if (panelEl.querySelector(entityTabOptions.buttonSelector)) return;
+function injectCubeTab(panelEl) {
+  if (panelEl.querySelector(cubeTabOptions.buttonSelector)) return;
 
   const cubePanel = panelEl.querySelector('brd-cubes-panel');
   if (!cubePanel) return;
@@ -135,13 +145,13 @@ function injectEntityTab(panelEl) {
   const bodyWrapper = cubePanel.querySelector('.mat-mdc-tab-body-wrapper');
   if (!titleEl || !bodyWrapper) return;
 
-  const overlay = createCustomTabOverlay(entityTabOptions.overlaySelector.slice(1));
-  wrapCustomTabTitle(titleEl, entityTabOptions.textClass);
+  const overlay = createCustomTabOverlay(cubeTabOptions.overlaySelector.slice(1));
+  wrapCustomTabTitle(titleEl, cubeTabOptions.textClass);
 
   const button = createCustomTabToggle({
     panelEl,
     overlay,
-    buttonClass: entityTabOptions.buttonSelector.slice(1),
+    buttonClass: cubeTabOptions.buttonSelector.slice(1),
     ariaLabel: 'Toggle custom info tab',
     title: 'Custom info',
     onToggle: (currentPanel, currentOverlay, visible) => {
@@ -150,39 +160,39 @@ function injectEntityTab(panelEl) {
         overlay: currentOverlay,
         button,
         visible,
-        populate: populateEntityOverlay,
+        populate: populateCubeOverlay,
       });
     },
   });
 
   titleEl.appendChild(button);
   bodyWrapper.appendChild(overlay);
-  console.log('[Board Click Logger] Custom entity tab injected into panel.');
+  console.log('[Board Click Logger] Custom cube tab injected into panel.');
 }
 
 closeCustomTabOnRows({
   rowSelector: 'brd-cubes .dx-data-row',
-  overlaySelector: entityTabOptions.overlaySelector,
-  buttonSelector: entityTabOptions.buttonSelector,
+  overlaySelector: cubeTabOptions.overlaySelector,
+  buttonSelector: cubeTabOptions.buttonSelector,
   getPanel: (element) => element.closest('brd-cubes-panel')?.closest('.panel')
     ?? element.closest('.panel'),
 });
 
 closeCustomTabOnRealTabs({
-  overlaySelector: entityTabOptions.overlaySelector,
-  buttonSelector: entityTabOptions.buttonSelector,
+  overlaySelector: cubeTabOptions.overlaySelector,
+  buttonSelector: cubeTabOptions.buttonSelector,
   getPanel: (element) => element.closest('brd-cubes-panel')?.closest('.panel')
     ?? element.closest('.panel'),
 });
 
-const entityPanelObserver = new MutationObserver((mutations) => {
+const cubePanelObserver = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
     for (const node of mutation.addedNodes) {
       if (node.nodeType !== Node.ELEMENT_NODE) continue;
       const panelEl = node.matches?.('.panel') ? node : node.querySelector?.('.panel');
-      if (panelEl) injectEntityTab(panelEl);
+      if (panelEl) injectCubeTab(panelEl);
     }
   }
 });
 
-entityPanelObserver.observe(document.body, { childList: true, subtree: true });
+cubePanelObserver.observe(document.body, { childList: true, subtree: true });

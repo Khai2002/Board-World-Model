@@ -17,11 +17,15 @@
     .tab-panel[hidden] { display: none; }
     li { margin: 8px 0; }
     code { color: #174ea6; }
+    .storage-size { margin: 12px 0; color: #5f6368; }
   </style>
 </head>
 <body>
   <h1>Board World Model</h1>
   <p id="status">Reading stored data…</p>
+  <div class="actions">
+    <button id="deleteAllButton" class="danger" type="button">Delete all local data</button>
+  </div>
   <div class="tabs" role="tablist" aria-label="Stored data">
     <button class="tab active" id="cubesTab" type="button" role="tab" aria-selected="true">Cubes</button>
     <button class="tab" id="proceduresTab" type="button" role="tab" aria-selected="false">Procedures</button>
@@ -35,11 +39,12 @@
         <option value="">Select a model</option>
       </select>
       <button id="deleteModelButton" type="button">Delete selected model</button>
-      <button id="deleteAllButton" class="danger" type="button">Delete all local data</button>
     </div>
+    <p id="cubeStorageSize" class="storage-size"></p>
     <ul id="cubes"></ul>
   </section>
   <section class="tab-panel" id="proceduresPanel" role="tabpanel" hidden>
+    <p id="procedureStorageSize" class="storage-size"></p>
     <ul id="procedures"></ul>
   </section>
   <script src="assets/board-world-model.js"></script>

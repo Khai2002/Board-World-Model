@@ -117,14 +117,31 @@ async function populateProcedureOverlay(panelEl, overlay) {
       return;
     }
 
-    const procedureDetails = await boardApi.getProcedureDetails(modelPath, procedure.name);
+    const loadProcedure = (identifier) => new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: 'GET_PROCEDURE', identifier },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          if (!response?.success) {
+            reject(new Error(response?.error || 'Could not load saved procedure details.'));
+            return;
+          }
+          resolve(response.data);
+        },
+      );
+    });
+    const procedureDetails = await loadProcedure({
+      name: procedure.name,
+      defaultDatabase: procedure.defaultDatabase,
+    });
+    console.log(procedureDetails)
     const procedureJson = JSON.stringify(procedureDetails, null, 2) ?? 'undefined';
     const recursiveModel = await window.BoardWorldModel.createRecursiveProcedureModel(
-      procedures,
+      loadProcedure,
       procedureDetails,
-      async (identifier) => {
-        return boardApi.getProcedureDetails(modelPath, identifier.name);
-      },
     );
     const { procedure: parsedProcedure, proceduresToExecute } = recursiveModel;
     const proceduresToDisplay = [

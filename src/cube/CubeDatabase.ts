@@ -34,5 +34,15 @@ export default class CubeDatabase extends Dexie {
             cubes: "&id, modelId, cubeId, [modelId+cubeId]",
             cubeEdges: "++id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
         })
+        this.version(2).stores({
+            cubes: "&id, modelId, cubeId, [modelId+cubeId]",
+            cubeEdges: "++id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
+            cubeImpacts: "&id, modelId, cubeId, [modelId+cubeId]",
+        })
+        this.version(3).stores({
+            cubes: "&id, modelId, cubeId, [modelId+cubeId]",
+            cubeEdges: "++id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
+            cubeImpacts: null,
+        })
     }
 }

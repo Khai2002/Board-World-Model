@@ -11,6 +11,8 @@ const proceduresTab = document.getElementById("proceduresTab");
 const cubesPanel = document.getElementById("cubesPanel");
 const proceduresPanel = document.getElementById("proceduresPanel");
 const proceduresList = document.getElementById("procedures");
+const cubeStorageSize = document.getElementById("cubeStorageSize");
+const procedureStorageSize = document.getElementById("procedureStorageSize");
 
 function openCubeDatabase() {
   return window.BoardWorldModel.openCubeDatabase();
@@ -25,6 +27,16 @@ function setModelOptions(modelIds) {
   for (const modelId of modelIds) {
     modelSelect.appendChild(new Option(modelId, modelId));
   }
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+}
+
+function estimateBytes(records) {
+  return new Blob([JSON.stringify(records)]).size;
 }
 
 async function getBackup() {
@@ -71,11 +83,15 @@ function parseBackup(value) {
 async function loadCubes() {
   try {
     const db = openCubeDatabase();
-    const cubes = await db.cubes.toArray();
+    const [cubes, cubeEdges] = await Promise.all([
+      db.cubes.toArray(),
+      db.cubeEdges.toArray(),
+    ]);
     const modelIds = [...new Set(cubes.map(cube => cube.modelId))].sort();
 
     cubesList.replaceChildren();
     setModelOptions(modelIds);
+    cubeStorageSize.textContent = `Estimated stored data: ${formatBytes(estimateBytes([...cubes, ...cubeEdges]))}`;
     status.textContent = `${cubes.length} cube${cubes.length === 1 ? "" : "s"} stored`;
     for (const cube of cubes) {
       const item = document.createElement("li");
@@ -100,6 +116,7 @@ async function loadProcedures() {
     const detailIds = new Set(details.map(procedure => procedure.id));
 
     proceduresList.replaceChildren();
+    procedureStorageSize.textContent = `Estimated stored data: ${formatBytes(estimateBytes([...metadata, ...details]))}`;
     status.textContent = `${metadata.length} procedure${metadata.length === 1 ? "" : "s"} stored · ${details.length} detailed`;
     for (const procedure of metadata.sort((left, right) => left.description.localeCompare(right.description))) {
       const item = document.createElement("li");
@@ -179,14 +196,14 @@ async function deleteSelectedModel() {
 }
 
 async function deleteAllData() {
-  if (!confirm("Delete all locally stored cubes and relationships? This cannot be undone.")) return;
+  if (!confirm("Delete all locally stored cubes, relationships, and procedures? This cannot be undone.")) return;
 
   try {
     await Promise.all([
       openCubeDatabase().delete(),
       openProcedureDatabase().delete(),
     ]);
-    await loadCubes();
+    await Promise.all([loadCubes(), loadProcedures()]);
   } catch (error) {
     status.textContent = `Could not delete cube database: ${error.message}`;
   }

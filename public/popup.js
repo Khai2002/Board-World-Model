@@ -125,13 +125,17 @@ async function saveCubes() {
 
     const cubes = normalizeCubeList(response.result.data);
     const db = window.BoardWorldModel.openCubeDatabase();
-    await db.cubes.bulkPut(cubes.map((cube) => ({
+    const cubeRows = cubes.map((cube) => ({
       id: `${modelId}:${cube.idx}`,
       modelId,
       cubeId: cube.idx,
       name: cube.extended,
       data: cube,
-    })));
+    }));
+    await db.transaction("rw", db.cubes, async () => {
+      await db.cubes.where("modelId").equals(modelId).delete();
+      await db.cubes.bulkPut(cubeRows);
+    });
     modelLine.textContent = `${modelId} · ${cubes.length} cubes stored`;
     output.className = "";
     output.textContent = JSON.stringify(cubes, null, 2);
@@ -159,31 +163,42 @@ async function saveProcedures() {
       ...procedure,
       id: `${procedure.defaultDatabase}:${procedure.name}`,
     }));
-    await db.procedureMetadata.bulkPut(metadataRows);
 
     let detailCount = 0;
+    const detailRows = [];
     for (let index = 0; index < metadataRows.length; index += PROCEDURE_BATCH_SIZE) {
       const batch = metadataRows.slice(index, index + PROCEDURE_BATCH_SIZE);
-      const detailResponse = await sendToContentScript({
-        type: "CALL",
-        endpoint: "getProcedures",
-        params: { dbname: modelId },
-        body: batch.map((procedure) => procedure.name),
-      });
-      if (!detailResponse?.success) {
+      const detailResponses = await Promise.all(batch.map((procedure) =>
+        sendToContentScript({
+          type: "GET_PROCEDURE_FULL",
+          dbName: modelId,
+          uniqueId: procedure.name,
+        })
+      ));
+      const failedResponse = detailResponses.find((response) => !response?.success);
+      if (failedResponse) {
         throw new Error(
-          `Could not get procedure details for batch ${Math.floor(index / PROCEDURE_BATCH_SIZE) + 1}: ${detailResponse?.error || "unknown error"}`,
+          `Could not get procedure details for batch ${Math.floor(index / PROCEDURE_BATCH_SIZE) + 1}: ${failedResponse.error || "unknown error"}`,
         );
       }
 
-      const details = normalizeProcedureDetails(detailResponse.result.data);
-      await db.procedures.bulkPut(details.map((procedure) => ({
+      const details = detailResponses.flatMap((response) =>
+        normalizeProcedureDetails(response.data)
+      );
+      detailRows.push(...details.map((procedure) => ({
         ...procedure,
         id: `${procedure.defaultDatabase}:${procedure.name}`,
       })));
       detailCount += details.length;
       modelLine.textContent = `${modelId} · ${detailCount}/${metadataRows.length} procedures stored`;
     }
+
+    await db.transaction("rw", db.procedureMetadata, db.procedures, async () => {
+      await db.procedureMetadata.clear();
+      await db.procedures.clear();
+      await db.procedureMetadata.bulkPut(metadataRows);
+      await db.procedures.bulkPut(detailRows);
+    });
 
     modelLine.textContent = `${modelId} · ${metadataRows.length} procedures stored`;
     output.className = "";
