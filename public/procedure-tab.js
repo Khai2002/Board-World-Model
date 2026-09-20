@@ -93,50 +93,6 @@ function ensureProcedureListStyles() {
   document.head.appendChild(style);
 }
 
-function normalizeProcedureResponse(data) {
-  const procedure = Array.isArray(data) ? data[0] : data;
-  if (!procedure || typeof procedure !== 'object') {
-    throw new Error('The procedure response is empty.');
-  }
-  return procedure;
-}
-
-async function getProcedureFull(dbName, uniqueId) {
-  const { data } = await callBoardAPI(
-    'getProcedures',
-    { dbname: dbName },
-    [uniqueId],
-  );
-  const procedure = normalizeProcedureResponse(data);
-
-  const procedureGroups = await Promise.all(
-    (procedure.procedureGroups ?? []).map(async (group) => ({
-      ...group,
-      steps: await Promise.all(
-        (group.steps ?? []).map(async (step) => {
-          if (!Array.isArray(step.configuredLayoutIds) || step.configuredLayoutIds.length === 0) {
-            return step;
-          }
-
-          const { data: layouts } = await callBoardAPI(
-            'layoutEditorProcedureGetBlockLayout',
-            {
-              dbname: dbName,
-              procedureId: uniqueId,
-              actionId: step.id,
-              isNotSaved: false,
-            },
-          );
-
-          return { ...step, layouts };
-        }),
-      ),
-    })),
-  );
-
-  return { ...procedure, procedureGroups };
-}
-
 async function populateProcedureOverlay(panelEl, overlay) {
   ensureProcedureListStyles();
 
@@ -154,26 +110,20 @@ async function populateProcedureOverlay(panelEl, overlay) {
   }
 
   try {
-    const { data: procedures } = await callBoardAPI('getCoreProcedures', {
-      dbname: modelPath,
-    });
-    const proceduresWithUrls = procedures.map((item) => ({
-      ...item,
-      url: `${window.location.origin}/data-models/${encodeURIComponent(modelPath)}/procedures/${encodeURIComponent(item.uniqueId ?? item.name)}`,
-    }));
-    const procedure = proceduresWithUrls.find((item) => item.description === procedureName);
+    const procedures = await boardApi.getCoreProcedures(modelPath);
+    const procedure = procedures.find((item) => item.description === procedureName);
     if (!procedure) {
       overlay.textContent = `No Procedure was found for "${procedureName}".`;
       return;
     }
 
-    const procedureDetails = await getProcedureFull(modelPath, procedure.name);
+    const procedureDetails = await boardApi.getProcedureDetails(modelPath, procedure.name);
     const procedureJson = JSON.stringify(procedureDetails, null, 2) ?? 'undefined';
     const recursiveModel = await window.BoardWorldModel.createRecursiveProcedureModel(
       procedures,
       procedureDetails,
       async (identifier) => {
-        return getProcedureFull(modelPath, identifier.name);
+        return boardApi.getProcedureDetails(modelPath, identifier.name);
       },
     );
     const { procedure: parsedProcedure, proceduresToExecute } = recursiveModel;

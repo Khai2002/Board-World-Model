@@ -6,9 +6,12 @@ const modelLine = document.getElementById("modelLine");
 
 document.getElementById("btnConnection").addEventListener("click", checkConnection);
 document.getElementById("btnCubes").addEventListener("click", saveCubes);
+document.getElementById("btnProcedures").addEventListener("click", saveProcedures);
 document.getElementById("btnDashboard").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 });
+
+const PROCEDURE_BATCH_SIZE = 10;
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -93,6 +96,23 @@ function normalizeCubeList(data) {
   return [];
 }
 
+function normalizeProcedureList(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.procedures)) return data.procedures;
+  if (Array.isArray(data?.procedure)) return data.procedure;
+  return [];
+}
+
+function normalizeProcedureDetails(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.procedures)) return data.procedures;
+  if (Array.isArray(data?.procedure)) return data.procedure;
+  if (data?.procedure && typeof data.procedure === "object") return [data.procedure];
+  return data && typeof data === "object" ? [data] : [];
+}
+
 async function saveCubes() {
   try {
     const modelId = await getModelId();
@@ -116,6 +136,59 @@ async function saveCubes() {
     output.className = "";
     output.textContent = JSON.stringify(cubes, null, 2);
     meta.textContent = `${response.result.method} ${response.result.url}`;
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
+async function saveProcedures() {
+  try {
+    const modelId = await getModelId();
+    const metadataResponse = await sendToContentScript({
+      type: "CALL",
+      endpoint: "getCoreProcedures",
+      params: { dbname: modelId },
+    });
+    if (!metadataResponse?.success) {
+      throw new Error(metadataResponse?.error || "Could not get procedures");
+    }
+
+    const metadata = normalizeProcedureList(metadataResponse.result.data);
+    const db = window.BoardWorldModel.openProcedureDatabase();
+    const metadataRows = metadata.map((procedure) => ({
+      ...procedure,
+      id: `${procedure.defaultDatabase}:${procedure.name}`,
+    }));
+    await db.procedureMetadata.bulkPut(metadataRows);
+
+    let detailCount = 0;
+    for (let index = 0; index < metadataRows.length; index += PROCEDURE_BATCH_SIZE) {
+      const batch = metadataRows.slice(index, index + PROCEDURE_BATCH_SIZE);
+      const detailResponse = await sendToContentScript({
+        type: "CALL",
+        endpoint: "getProcedures",
+        params: { dbname: modelId },
+        body: batch.map((procedure) => procedure.name),
+      });
+      if (!detailResponse?.success) {
+        throw new Error(
+          `Could not get procedure details for batch ${Math.floor(index / PROCEDURE_BATCH_SIZE) + 1}: ${detailResponse?.error || "unknown error"}`,
+        );
+      }
+
+      const details = normalizeProcedureDetails(detailResponse.result.data);
+      await db.procedures.bulkPut(details.map((procedure) => ({
+        ...procedure,
+        id: `${procedure.defaultDatabase}:${procedure.name}`,
+      })));
+      detailCount += details.length;
+      modelLine.textContent = `${modelId} · ${detailCount}/${metadataRows.length} procedures stored`;
+    }
+
+    modelLine.textContent = `${modelId} · ${metadataRows.length} procedures stored`;
+    output.className = "";
+    output.textContent = JSON.stringify(metadataRows, null, 2);
+    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records in batches of ${PROCEDURE_BATCH_SIZE}`;
   } catch (error) {
     renderError(error.message);
   }

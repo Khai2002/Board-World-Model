@@ -14,7 +14,7 @@
       "matches": [
         "https://*.board.com/*"
       ],
-      "js": ["endpoints.js", "utils.js", "entity-tab.js", "assets/board-world-model.js", "procedure-tab.js", "content.js"],
+      "js": ["endpoints.js", "utils.js", "board-api.js", "entity-tab.js", "assets/board-world-model.js", "procedure-tab.js", "content.js"],
       "run_at": "document_idle"
     }
   ]

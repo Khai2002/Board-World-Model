@@ -1,964 +1,994 @@
 {
-  "procedureBehaviour": 1,
-  "procedureWindowEnum": 1,
-  "procedureGroups": [
-    {
-      "debugCounter": 1,
-      "description": "Main",
-      "steps": [
-        {
-          "selectText": "Flag Scénario: Atterrissage Courant",
-          "filters": {
-            "databaseSelections": [
-              {
-                "databaseName": "FIN",
-                "selections": [
-                  {
-                    "entityIdx": 209,
-                    "elementList": [
-                      {
-                        "idx": 3,
-                        "discriminator": "UserSelectionElementDto"
-                      }
-                    ],
-                    "mode": 1,
-                    "clicked": 0,
-                    "noAll": false,
-                    "period": 0,
-                    "discriminator": "UserSelectionDto"
-                  }
-                ]
-              }
-            ]
-          },
-          "actionType": 15,
-          "debugCounter": 2,
-          "comment": "",
-          "detail": "Flag Scénario: Atterrissage Courant",
-          "name": "Selection",
-          "id": "fec448f6-f988-4da3-807b-1ccc98588e0b",
-          "databaseName": "FIN",
-          "executionSide": 2,
-          "discriminator": "SelectionActionDto"
-        },
-        {
-          "expression": "a",
-          "cube": {
-            "cubeName": "",
-            "cubeExtended": "",
-            "discriminator": "PhysicalCubeParameterDto"
-          },
-          "outerJoinEntityIdxList": [],
-          "targetLetter": "b",
-          "isConfiguredLayout": true,
-          "layoutIdsToDelete": [],
-          "configuredLayoutIds": [
-            "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
-          ],
-          "filters": {},
-          "actionType": 23,
-          "debugCounter": 3,
-          "comment": "",
-          "detail": "Synthèse budgétaire ATTERRISSAGE=a",
-          "name": "Dataflow",
-          "id": "df6e2206-5a8d-44ee-af93-623fc7dff68a",
-          "databaseName": "FIN",
-          "discriminator": "DataFlowActionDto",
-          "layouts": [
-            {
-              "actionId": "df6e2206-5a8d-44ee-af93-623fc7dff68a",
-              "blocks": [
-                {
-                  "cubeIdx": 193,
-                  "value": "40183e97-4401-4e93-caba-bb5171050899",
-                  "letter": "b",
-                  "translation": "Synthèse budgétaire ATTERRISSAGE",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 193,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0193",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire ATTERRISSAGE",
-                    "type": 1,
-                    "id": "40183e97-4401-4e93-caba-bb5171050899",
-                    "letter": "b",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                },
-                {
-                  "cubeIdx": 182,
-                  "value": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                  "letter": "a",
-                  "translation": "Synthèse budgétaire",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 182,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0182",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire",
-                    "type": 1,
-                    "id": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                    "letter": "a",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "selectText": "Flag Scénario: Budget N+1",
-          "filters": {
-            "databaseSelections": [
-              {
-                "databaseName": "FIN",
-                "selections": [
-                  {
-                    "entityIdx": 209,
-                    "elementList": [
-                      {
-                        "idx": 4,
-                        "discriminator": "UserSelectionElementDto"
-                      }
-                    ],
-                    "mode": 1,
-                    "clicked": 0,
-                    "noAll": false,
-                    "period": 0,
-                    "discriminator": "UserSelectionDto"
-                  }
-                ]
-              }
-            ]
-          },
-          "actionType": 15,
-          "debugCounter": 4,
-          "comment": "",
-          "detail": "Flag Scénario: Budget N+1",
-          "name": "Selection",
-          "id": "279d3285-93ed-4274-9c05-74d00ba8163b",
-          "databaseName": "FIN",
-          "executionSide": 2,
-          "discriminator": "SelectionActionDto"
-        },
-        {
-          "expression": "a",
-          "cube": {
-            "cubeName": "",
-            "cubeExtended": "",
-            "discriminator": "PhysicalCubeParameterDto"
-          },
-          "outerJoinEntityIdxList": [],
-          "targetLetter": "b",
-          "isConfiguredLayout": true,
-          "layoutIdsToDelete": [],
-          "configuredLayoutIds": [
-            "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
-          ],
-          "filters": {},
-          "actionType": 23,
-          "debugCounter": 5,
-          "comment": "",
-          "detail": "Synthese Budgétaire BUDGET N+1=a",
-          "name": "Dataflow",
-          "id": "d180b688-22a1-4ffb-928b-227ecd62640a",
-          "databaseName": "FIN",
-          "discriminator": "DataFlowActionDto",
-          "layouts": [
-            {
-              "actionId": "d180b688-22a1-4ffb-928b-227ecd62640a",
-              "blocks": [
-                {
-                  "cubeIdx": 194,
-                  "value": "40183e97-4401-4e93-caba-bb5171050899",
-                  "letter": "b",
-                  "translation": "Synthese Budgétaire BUDGET N+1",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 194,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0194",
-                    "divideBy": 1,
-                    "label": "Synthese Budgétaire BUDGET N+1",
-                    "type": 1,
-                    "id": "40183e97-4401-4e93-caba-bb5171050899",
-                    "letter": "b",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "detailByKeepTop": 1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                },
-                {
-                  "cubeIdx": 182,
-                  "value": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                  "letter": "a",
-                  "translation": "Synthèse budgétaire",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 182,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0182",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire",
-                    "type": 1,
-                    "id": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                    "letter": "a",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "selectText": "Flag Scénario: Budget N",
-          "filters": {
-            "databaseSelections": [
-              {
-                "databaseName": "FIN",
-                "selections": [
-                  {
-                    "entityIdx": 209,
-                    "elementList": [
-                      {
-                        "idx": 5,
-                        "discriminator": "UserSelectionElementDto"
-                      }
-                    ],
-                    "mode": 1,
-                    "clicked": 0,
-                    "noAll": false,
-                    "period": 0,
-                    "discriminator": "UserSelectionDto"
-                  }
-                ]
-              }
-            ]
-          },
-          "actionType": 15,
-          "debugCounter": 6,
-          "comment": "",
-          "detail": "Flag Scénario: Budget N",
-          "name": "Selection",
-          "id": "974ec558-54fb-4d78-a256-8b362cadee40",
-          "databaseName": "FIN",
-          "executionSide": 2,
-          "discriminator": "SelectionActionDto"
-        },
-        {
-          "expression": "a",
-          "cube": {
-            "cubeName": "",
-            "cubeExtended": "",
-            "discriminator": "PhysicalCubeParameterDto"
-          },
-          "outerJoinEntityIdxList": [],
-          "targetLetter": "b",
-          "isConfiguredLayout": true,
-          "layoutIdsToDelete": [],
-          "configuredLayoutIds": [
-            "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
-          ],
-          "filters": {},
-          "actionType": 23,
-          "debugCounter": 7,
-          "comment": "",
-          "detail": "Synthèse budgétaire BUDGET N=a",
-          "name": "Dataflow",
-          "id": "ae94b2c1-0749-45f2-abf5-c976a4f05055",
-          "databaseName": "FIN",
-          "discriminator": "DataFlowActionDto",
-          "layouts": [
-            {
-              "actionId": "ae94b2c1-0749-45f2-abf5-c976a4f05055",
-              "blocks": [
-                {
-                  "cubeIdx": 236,
-                  "value": "40183e97-4401-4e93-caba-bb5171050899",
-                  "letter": "b",
-                  "translation": "Synthèse budgétaire BUDGET N",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 236,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0236",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire BUDGET N",
-                    "type": 1,
-                    "id": "40183e97-4401-4e93-caba-bb5171050899",
-                    "letter": "b",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "detailByKeepTop": 1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                },
-                {
-                  "cubeIdx": 182,
-                  "value": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                  "letter": "a",
-                  "translation": "Synthèse budgétaire",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 182,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0182",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire",
-                    "type": 1,
-                    "id": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                    "letter": "a",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "selectText": "Type année: Année précédente, Flag Scénario: Réel",
-          "filters": {
-            "databaseSelections": [
-              {
-                "databaseName": "FIN",
-                "selections": [
-                  {
-                    "entityIdx": 4,
-                    "elementList": [
-                      {
-                        "idx": 1,
-                        "discriminator": "UserSelectionElementDto"
-                      }
-                    ],
-                    "mode": 1,
-                    "clicked": 0,
-                    "noAll": false,
-                    "period": 0,
-                    "discriminator": "UserSelectionDto"
-                  },
-                  {
-                    "entityIdx": 209,
-                    "elementList": [
-                      {
-                        "idx": 1,
-                        "discriminator": "UserSelectionElementDto"
-                      }
-                    ],
-                    "mode": 1,
-                    "clicked": 0,
-                    "noAll": false,
-                    "period": 0,
-                    "discriminator": "UserSelectionDto"
-                  }
-                ]
-              }
-            ]
-          },
-          "actionType": 15,
-          "debugCounter": 8,
-          "comment": "",
-          "detail": "Type année: Année précédente, Flag Scénario: Réel",
-          "name": "Selection",
-          "id": "67075713-ed69-4d3c-8f9f-ec81c480c9f7",
-          "databaseName": "FIN",
-          "executionSide": 2,
-          "discriminator": "SelectionActionDto"
-        },
-        {
-          "expression": "a",
-          "cube": {
-            "cubeName": "",
-            "cubeExtended": "",
-            "discriminator": "PhysicalCubeParameterDto"
-          },
-          "outerJoinEntityIdxList": [],
-          "targetLetter": "b",
-          "isConfiguredLayout": true,
-          "layoutIdsToDelete": [],
-          "configuredLayoutIds": [
-            "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
-          ],
-          "filters": {},
-          "actionType": 23,
-          "debugCounter": 9,
-          "comment": "",
-          "detail": "Synthèse budgétaire N-1=a",
-          "name": "Dataflow",
-          "id": "c5df75e4-2224-4448-a49b-a654b843481c",
-          "databaseName": "FIN",
-          "discriminator": "DataFlowActionDto",
-          "layouts": [
-            {
-              "actionId": "c5df75e4-2224-4448-a49b-a654b843481c",
-              "blocks": [
-                {
-                  "cubeIdx": 235,
-                  "value": "40183e97-4401-4e93-caba-bb5171050899",
-                  "letter": "b",
-                  "translation": "Synthèse budgétaire N-1",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 235,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0235",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire N-1",
-                    "type": 1,
-                    "id": "40183e97-4401-4e93-caba-bb5171050899",
-                    "letter": "b",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "detailByKeepTop": 1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                },
-                {
-                  "cubeIdx": 182,
-                  "value": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                  "letter": "a",
-                  "translation": "Synthèse budgétaire",
-                  "blockType": 1,
-                  "block": {
-                    "idx": 182,
-                    "statisticalFunctionSettings": {},
-                    "cubeName": "V0182",
-                    "divideBy": 1,
-                    "label": "Synthèse budgétaire",
-                    "type": 1,
-                    "id": "88bd5eef-5658-e355-578f-8491c5ae1880",
-                    "letter": "a",
-                    "totalModes": [
-                      0,
-                      2,
-                      3,
-                      4,
-                      5,
-                      8,
-                      6,
-                      11,
-                      12,
-                      9,
-                      10
-                    ],
-                    "rowTotal": true,
-                    "hideZeros": true,
-                    "alert": {
-                      "thresholds": [
-                        {
-                          "max": 0,
-                          "color": {
-                            "r": 213,
-                            "g": 51,
-                            "b": 55,
-                            "a": 1
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "minIncluded": true,
-                          "max": 0,
-                          "maxIncluded": true,
-                          "color": {
-                            "r": 255,
-                            "g": 255,
-                            "b": 255
-                          }
-                        },
-                        {
-                          "min": 0,
-                          "color": {
-                            "r": 84,
-                            "g": 182,
-                            "b": 79,
-                            "a": 1
-                          }
-                        }
-                      ]
-                    },
-                    "dataEntrySettings": {
-                      "basedOnCubeIdx": -1,
-                      "suggestedValuesSettings": {},
-                      "lockedByCubeSettings": {
-                        "lockNotZeroMode": 1
-                      },
-                      "totalLockedByRow": true,
-                      "invertLockingByTotals": 1,
-                      "invertLockingByBlock": 1,
-                      "validationRules": [],
-                      "validateOnlyChanged": true
-                    },
-                    "functionsSettings": {},
-                    "blockReferences": [],
-                    "rulesSettings": {},
-                    "detailByIdx": -1,
-                    "totalByIdxs": [],
-                    "discriminator": "WebInfoCubeBlock"
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      "id": "589d3dd2-246b-4f45-aea1-38b5d827e1e0"
-    }
-  ],
-  "virtualCubesList": [],
-  "oldDescription": "CAL [ Synthèse budgétaire ] vers [ Synthèse budgétaire ATTER et BUDGET ]",
-  "name": "e91cf58b-260b-4a6c-a8c4-7ab837022505",
-  "description": "CAL [ Synthèse budgétaire ] vers [ Synthèse budgétaire ATTER et BUDGET ]",
-  "procedureType": 1,
-  "defaultDatabase": "FIN"
+	"procedure": [
+		{
+			"procedureBehaviour": 1,
+			"procedureWindowEnum": 1,
+			"procedureGroups": [
+				{
+					"debugCounter": 1,
+					"description": "Main",
+					"steps": [
+						{
+							"selectText": "Flag Scénario: Atterrissage Courant",
+							"filters": {
+								"databaseSelections": [
+									{
+										"databaseName": "FIN",
+										"selections": [
+											{
+												"entityIdx": 209,
+												"elementList": [
+													{
+														"idx": 3,
+														"discriminator": "UserSelectionElementDto"
+													}
+												],
+												"mode": 1,
+												"clicked": 0,
+												"noAll": false,
+												"period": 0,
+												"discriminator": "UserSelectionDto"
+											}
+										]
+									}
+								]
+							},
+							"actionType": 15,
+							"debugCounter": 2,
+							"comment": "",
+							"detail": "Flag Scénario: Atterrissage Courant",
+							"name": "Selection",
+							"id": "fec448f6-f988-4da3-807b-1ccc98588e0b",
+							"databaseName": "FIN",
+							"executionSide": 2,
+							"discriminator": "SelectionActionDto"
+						},
+						{
+							"expression": "a",
+							"cube": {
+								"cubeName": "",
+								"cubeExtended": "",
+								"discriminator": "PhysicalCubeParameterDto"
+							},
+							"outerJoinEntityIdxList": [],
+							"targetLetter": "b",
+							"isConfiguredLayout": true,
+							"layoutIdsToDelete": [],
+							"configuredLayoutIds": [
+								"dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
+							],
+							"filters": {},
+							"actionType": 23,
+							"debugCounter": 3,
+							"comment": "",
+							"detail": "Synthèse budgétaire ATTERRISSAGE=a",
+							"name": "Dataflow",
+							"id": "df6e2206-5a8d-44ee-af93-623fc7dff68a",
+							"databaseName": "FIN",
+							"discriminator": "DataFlowActionDto"
+						},
+						{
+							"selectText": "Flag Scénario: Budget N+1",
+							"filters": {
+								"databaseSelections": [
+									{
+										"databaseName": "FIN",
+										"selections": [
+											{
+												"entityIdx": 209,
+												"elementList": [
+													{
+														"idx": 4,
+														"discriminator": "UserSelectionElementDto"
+													}
+												],
+												"mode": 1,
+												"clicked": 0,
+												"noAll": false,
+												"period": 0,
+												"discriminator": "UserSelectionDto"
+											}
+										]
+									}
+								]
+							},
+							"actionType": 15,
+							"debugCounter": 4,
+							"comment": "",
+							"detail": "Flag Scénario: Budget N+1",
+							"name": "Selection",
+							"id": "279d3285-93ed-4274-9c05-74d00ba8163b",
+							"databaseName": "FIN",
+							"executionSide": 2,
+							"discriminator": "SelectionActionDto"
+						},
+						{
+							"expression": "a",
+							"cube": {
+								"cubeName": "",
+								"cubeExtended": "",
+								"discriminator": "PhysicalCubeParameterDto"
+							},
+							"outerJoinEntityIdxList": [],
+							"targetLetter": "b",
+							"isConfiguredLayout": true,
+							"layoutIdsToDelete": [],
+							"configuredLayoutIds": [
+								"dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
+							],
+							"filters": {},
+							"actionType": 23,
+							"debugCounter": 5,
+							"comment": "",
+							"detail": "Synthese Budgétaire BUDGET N+1=a",
+							"name": "Dataflow",
+							"id": "d180b688-22a1-4ffb-928b-227ecd62640a",
+							"databaseName": "FIN",
+							"discriminator": "DataFlowActionDto"
+						},
+						{
+							"selectText": "Flag Scénario: Budget N",
+							"filters": {
+								"databaseSelections": [
+									{
+										"databaseName": "FIN",
+										"selections": [
+											{
+												"entityIdx": 209,
+												"elementList": [
+													{
+														"idx": 5,
+														"discriminator": "UserSelectionElementDto"
+													}
+												],
+												"mode": 1,
+												"clicked": 0,
+												"noAll": false,
+												"period": 0,
+												"discriminator": "UserSelectionDto"
+											}
+										]
+									}
+								]
+							},
+							"actionType": 15,
+							"debugCounter": 6,
+							"comment": "",
+							"detail": "Flag Scénario: Budget N",
+							"name": "Selection",
+							"id": "974ec558-54fb-4d78-a256-8b362cadee40",
+							"databaseName": "FIN",
+							"executionSide": 2,
+							"discriminator": "SelectionActionDto"
+						},
+						{
+							"expression": "a",
+							"cube": {
+								"cubeName": "",
+								"cubeExtended": "",
+								"discriminator": "PhysicalCubeParameterDto"
+							},
+							"outerJoinEntityIdxList": [],
+							"targetLetter": "b",
+							"isConfiguredLayout": true,
+							"layoutIdsToDelete": [],
+							"configuredLayoutIds": [
+								"dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
+							],
+							"filters": {},
+							"actionType": 23,
+							"debugCounter": 7,
+							"comment": "",
+							"detail": "Synthèse budgétaire BUDGET N=a",
+							"name": "Dataflow",
+							"id": "ae94b2c1-0749-45f2-abf5-c976a4f05055",
+							"databaseName": "FIN",
+							"discriminator": "DataFlowActionDto"
+						},
+						{
+							"selectText": "Type année: Année précédente, Flag Scénario: Réel",
+							"filters": {
+								"databaseSelections": [
+									{
+										"databaseName": "FIN",
+										"selections": [
+											{
+												"entityIdx": 4,
+												"elementList": [
+													{
+														"idx": 1,
+														"discriminator": "UserSelectionElementDto"
+													}
+												],
+												"mode": 1,
+												"clicked": 0,
+												"noAll": false,
+												"period": 0,
+												"discriminator": "UserSelectionDto"
+											},
+											{
+												"entityIdx": 209,
+												"elementList": [
+													{
+														"idx": 1,
+														"discriminator": "UserSelectionElementDto"
+													}
+												],
+												"mode": 1,
+												"clicked": 0,
+												"noAll": false,
+												"period": 0,
+												"discriminator": "UserSelectionDto"
+											}
+										]
+									}
+								]
+							},
+							"actionType": 15,
+							"debugCounter": 8,
+							"comment": "",
+							"detail": "Type année: Année précédente, Flag Scénario: Réel",
+							"name": "Selection",
+							"id": "67075713-ed69-4d3c-8f9f-ec81c480c9f7",
+							"databaseName": "FIN",
+							"executionSide": 2,
+							"discriminator": "SelectionActionDto"
+						},
+						{
+							"expression": "a",
+							"cube": {
+								"cubeName": "",
+								"cubeExtended": "",
+								"discriminator": "PhysicalCubeParameterDto"
+							},
+							"outerJoinEntityIdxList": [],
+							"targetLetter": "b",
+							"isConfiguredLayout": true,
+							"layoutIdsToDelete": [],
+							"configuredLayoutIds": [
+								"dd50b9cc-4405-4d7d-8c03-823d0e21c9c1"
+							],
+							"filters": {},
+							"actionType": 23,
+							"debugCounter": 9,
+							"comment": "",
+							"detail": "Synthèse budgétaire N-1=a",
+							"name": "Dataflow",
+							"id": "c5df75e4-2224-4448-a49b-a654b843481c",
+							"databaseName": "FIN",
+							"discriminator": "DataFlowActionDto"
+						}
+					],
+					"id": "589d3dd2-246b-4f45-aea1-38b5d827e1e0"
+				}
+			],
+			"virtualCubesList": [],
+			"oldDescription": "CAL [ Synthèse budgétaire ] vers [ Synthèse budgétaire ATTER et BUDGET ]",
+			"name": "e91cf58b-260b-4a6c-a8c4-7ab837022505",
+			"description": "CAL [ Synthèse budgétaire ] vers [ Synthèse budgétaire ATTER et BUDGET ]",
+			"procedureType": 1,
+			"defaultDatabase": "FIN"
+		}
+	],
+	"layouts": [
+		{
+			"virtualCubes": [],
+			"newToolboxId": "a4f82809-884d-48ab-9868-8703cd36994a",
+			"coreLayout": {
+				"layoutId": "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1",
+				"databaseName": "FIN",
+				"blocks": [
+					{
+						"idx": 182,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					},
+					{
+						"idx": 193,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "40183e97-4401-4e93-caba-bb5171050899",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					}
+				],
+				"autoAlign": true,
+				"rowSortSettings": {
+					"keepTotals": true
+				},
+				"columnSortSettings": {
+					"keepTotals": true
+				},
+				"filterSettings": {
+					"filters": []
+				},
+				"axisProperties": {
+					"cols": {
+						"entities": [],
+						"showAll": true
+					},
+					"rows": {
+						"entities": [],
+						"downTotals": true
+					}
+				},
+				"extendEntitiesIdx": []
+			},
+			"selections": [],
+			"screenSelection": [],
+			"availableDatabases": [
+				"FIN"
+			],
+			"layoutOptions": {
+				"totalsAlign": 2,
+				"blocksAppearance": {
+					"88bd5eef-5658-e355-578f-8491c5ae1880": 0,
+					"40183e97-4401-4e93-caba-bb5171050899": 0
+				},
+				"blocksActions": [],
+				"quickLayoutEntityConfigurations": [],
+				"quickLayoutDefaultBlocksVisibility": [
+					{
+						"blockId": "40183e97-4401-4e93-caba-bb5171050899",
+						"name": "Synthèse budgétaire ATTERRISSAGE",
+						"visible": true
+					},
+					{
+						"blockId": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"name": "Synthèse budgétaire",
+						"visible": true
+					}
+				],
+				"sparklineBlocks": [],
+				"discriminator": "LayoutOptionsDataViewDto"
+			}
+		},
+		{
+			"virtualCubes": [],
+			"newToolboxId": "d1df7f7a-ee4b-4051-8b95-bf3dba4d1ff0",
+			"coreLayout": {
+				"layoutId": "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1",
+				"databaseName": "FIN",
+				"blocks": [
+					{
+						"idx": 182,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					},
+					{
+						"idx": 194,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "40183e97-4401-4e93-caba-bb5171050899",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"detailByKeepTop": 1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					}
+				],
+				"autoAlign": true,
+				"rowSortSettings": {
+					"keepTotals": true
+				},
+				"columnSortSettings": {
+					"keepTotals": true
+				},
+				"filterSettings": {
+					"filters": []
+				},
+				"axisProperties": {
+					"cols": {
+						"entities": [],
+						"showAll": true
+					},
+					"rows": {
+						"entities": [],
+						"downTotals": true
+					}
+				},
+				"extendEntitiesIdx": []
+			},
+			"selections": [],
+			"screenSelection": [],
+			"availableDatabases": [
+				"FIN"
+			],
+			"layoutOptions": {
+				"totalsAlign": 2,
+				"blocksAppearance": {
+					"88bd5eef-5658-e355-578f-8491c5ae1880": 0,
+					"40183e97-4401-4e93-caba-bb5171050899": 0
+				},
+				"blocksActions": [],
+				"quickLayoutEntityConfigurations": [],
+				"quickLayoutDefaultBlocksVisibility": [
+					{
+						"blockId": "40183e97-4401-4e93-caba-bb5171050899",
+						"name": "Synthese Budgétaire BUDGET N+1",
+						"visible": true
+					},
+					{
+						"blockId": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"name": "Synthèse budgétaire",
+						"visible": true
+					}
+				],
+				"sparklineBlocks": [],
+				"discriminator": "LayoutOptionsDataViewDto"
+			}
+		},
+		{
+			"virtualCubes": [],
+			"newToolboxId": "bb37d9c9-49da-4821-8442-c7ca5f19f35c",
+			"coreLayout": {
+				"layoutId": "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1",
+				"databaseName": "FIN",
+				"blocks": [
+					{
+						"idx": 182,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					},
+					{
+						"idx": 236,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "40183e97-4401-4e93-caba-bb5171050899",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"detailByKeepTop": 1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					}
+				],
+				"autoAlign": true,
+				"rowSortSettings": {
+					"keepTotals": true
+				},
+				"columnSortSettings": {
+					"keepTotals": true
+				},
+				"filterSettings": {
+					"filters": []
+				},
+				"axisProperties": {
+					"cols": {
+						"entities": [],
+						"showAll": true
+					},
+					"rows": {
+						"entities": [],
+						"downTotals": true
+					}
+				},
+				"extendEntitiesIdx": []
+			},
+			"selections": [],
+			"screenSelection": [],
+			"availableDatabases": [
+				"FIN"
+			],
+			"layoutOptions": {
+				"totalsAlign": 2,
+				"blocksAppearance": {
+					"88bd5eef-5658-e355-578f-8491c5ae1880": 0,
+					"40183e97-4401-4e93-caba-bb5171050899": 0
+				},
+				"blocksActions": [],
+				"quickLayoutEntityConfigurations": [],
+				"quickLayoutDefaultBlocksVisibility": [
+					{
+						"blockId": "40183e97-4401-4e93-caba-bb5171050899",
+						"name": "Synthèse budgétaire BUDGET N",
+						"visible": true
+					},
+					{
+						"blockId": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"name": "Synthèse budgétaire",
+						"visible": true
+					}
+				],
+				"sparklineBlocks": [],
+				"discriminator": "LayoutOptionsDataViewDto"
+			}
+		},
+		{
+			"virtualCubes": [],
+			"newToolboxId": "d4b987e0-1949-47c1-ba24-3a3aa5e39dc9",
+			"coreLayout": {
+				"layoutId": "dd50b9cc-4405-4d7d-8c03-823d0e21c9c1",
+				"databaseName": "FIN",
+				"blocks": [
+					{
+						"idx": 182,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					},
+					{
+						"idx": 235,
+						"statisticalFunctionSettings": {},
+						"divideBy": 1,
+						"id": "40183e97-4401-4e93-caba-bb5171050899",
+						"rowTotal": true,
+						"hideZeros": true,
+						"alert": {
+							"thresholds": [
+								{
+									"max": 0,
+									"color": {
+										"r": 213,
+										"g": 51,
+										"b": 55,
+										"a": 1
+									}
+								},
+								{
+									"min": 0,
+									"minIncluded": true,
+									"max": 0,
+									"maxIncluded": true,
+									"color": {
+										"r": 255,
+										"g": 255,
+										"b": 255
+									}
+								},
+								{
+									"min": 0,
+									"color": {
+										"r": 84,
+										"g": 182,
+										"b": 79,
+										"a": 1
+									}
+								}
+							]
+						},
+						"dataEntrySettings": {
+							"basedOnCubeIdx": -1,
+							"suggestedValuesSettings": {},
+							"lockedByCubeSettings": {
+								"lockNotZeroMode": 1
+							},
+							"totalLockedByRow": true,
+							"invertLockingByTotals": 1,
+							"invertLockingByBlock": 1,
+							"validationRules": [],
+							"validateOnlyChanged": true
+						},
+						"functionsSettings": {},
+						"blockReferences": [],
+						"mxcConfigurator": {},
+						"rulesSettings": {},
+						"detailByIdx": -1,
+						"detailByKeepTop": 1,
+						"totalByIdxs": [],
+						"discriminator": "WebCubeBlockDto"
+					}
+				],
+				"autoAlign": true,
+				"rowSortSettings": {
+					"keepTotals": true
+				},
+				"columnSortSettings": {
+					"keepTotals": true
+				},
+				"filterSettings": {
+					"filters": []
+				},
+				"axisProperties": {
+					"cols": {
+						"entities": [],
+						"showAll": true
+					},
+					"rows": {
+						"entities": [],
+						"downTotals": true
+					}
+				},
+				"extendEntitiesIdx": []
+			},
+			"selections": [],
+			"screenSelection": [],
+			"availableDatabases": [
+				"FIN"
+			],
+			"layoutOptions": {
+				"totalsAlign": 2,
+				"blocksAppearance": {
+					"88bd5eef-5658-e355-578f-8491c5ae1880": 0,
+					"40183e97-4401-4e93-caba-bb5171050899": 0
+				},
+				"blocksActions": [],
+				"quickLayoutEntityConfigurations": [],
+				"quickLayoutDefaultBlocksVisibility": [
+					{
+						"blockId": "40183e97-4401-4e93-caba-bb5171050899",
+						"name": "Synthèse budgétaire N-1",
+						"visible": true
+					},
+					{
+						"blockId": "88bd5eef-5658-e355-578f-8491c5ae1880",
+						"name": "Synthèse budgétaire",
+						"visible": true
+					}
+				],
+				"sparklineBlocks": [],
+				"discriminator": "LayoutOptionsDataViewDto"
+			}
+		}
+	]
 }

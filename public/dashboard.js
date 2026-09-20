@@ -6,9 +6,18 @@ const importInput = document.getElementById("importInput");
 const modelSelect = document.getElementById("modelSelect");
 const deleteModelButton = document.getElementById("deleteModelButton");
 const deleteAllButton = document.getElementById("deleteAllButton");
+const cubesTab = document.getElementById("cubesTab");
+const proceduresTab = document.getElementById("proceduresTab");
+const cubesPanel = document.getElementById("cubesPanel");
+const proceduresPanel = document.getElementById("proceduresPanel");
+const proceduresList = document.getElementById("procedures");
 
-function openDatabase() {
+function openCubeDatabase() {
   return window.BoardWorldModel.openCubeDatabase();
+}
+
+function openProcedureDatabase() {
+  return window.BoardWorldModel.openProcedureDatabase();
 }
 
 function setModelOptions(modelIds) {
@@ -19,7 +28,7 @@ function setModelOptions(modelIds) {
 }
 
 async function getBackup() {
-  const db = openDatabase();
+  const db = openCubeDatabase();
   return {
     cubes: await db.cubes.toArray(),
     cubeEdges: await db.cubeEdges.toArray(),
@@ -61,7 +70,7 @@ function parseBackup(value) {
 
 async function loadCubes() {
   try {
-    const db = openDatabase();
+    const db = openCubeDatabase();
     const cubes = await db.cubes.toArray();
     const modelIds = [...new Set(cubes.map(cube => cube.modelId))].sort();
 
@@ -81,6 +90,45 @@ async function loadCubes() {
   }
 }
 
+async function loadProcedures() {
+  try {
+    const db = openProcedureDatabase();
+    const [metadata, details] = await Promise.all([
+      db.procedureMetadata.toArray(),
+      db.procedures.toArray(),
+    ]);
+    const detailIds = new Set(details.map(procedure => procedure.id));
+
+    proceduresList.replaceChildren();
+    status.textContent = `${metadata.length} procedure${metadata.length === 1 ? "" : "s"} stored · ${details.length} detailed`;
+    for (const procedure of metadata.sort((left, right) => left.description.localeCompare(right.description))) {
+      const item = document.createElement("li");
+      item.textContent = `${procedure.description || "Unnamed procedure"} `;
+      const id = document.createElement("code");
+      id.textContent = `(${procedure.defaultDatabase}:${procedure.name})`;
+      item.appendChild(id);
+      const detailState = document.createElement("span");
+      detailState.textContent = detailIds.has(procedure.id) ? " · details loaded" : " · metadata only";
+      item.appendChild(detailState);
+      proceduresList.appendChild(item);
+    }
+  } catch (error) {
+    status.textContent = `Could not read procedure database: ${error.message}`;
+  }
+}
+
+function showTab(tab) {
+  const showProcedures = tab === "procedures";
+  cubesTab.classList.toggle("active", !showProcedures);
+  proceduresTab.classList.toggle("active", showProcedures);
+  cubesTab.setAttribute("aria-selected", String(!showProcedures));
+  proceduresTab.setAttribute("aria-selected", String(showProcedures));
+  cubesPanel.hidden = showProcedures;
+  proceduresPanel.hidden = !showProcedures;
+  if (showProcedures) loadProcedures();
+  else loadCubes();
+}
+
 async function exportData() {
   try {
     downloadJson(await getBackup(), "cube-model-backup.json");
@@ -94,7 +142,7 @@ async function importData(file) {
     const backup = parseBackup(JSON.parse(await file.text()));
     if (!confirm("Replace all local cube data with this backup? This cannot be undone.")) return;
 
-    const db = openDatabase();
+    const db = openCubeDatabase();
     await db.transaction("rw", db.cubes, db.cubeEdges, async () => {
       await db.cubes.clear();
       await db.cubeEdges.clear();
@@ -116,7 +164,7 @@ async function deleteSelectedModel() {
   if (!confirm(`Delete all local cubes and relationships for ${modelId}?`)) return;
 
   try {
-    const db = openDatabase();
+    const db = openCubeDatabase();
     await db.transaction("rw", db.cubes, db.cubeEdges, async () => {
       await db.cubes.where("modelId").equals(modelId).delete();
       await db.cubeEdges
@@ -134,8 +182,10 @@ async function deleteAllData() {
   if (!confirm("Delete all locally stored cubes and relationships? This cannot be undone.")) return;
 
   try {
-    const db = openDatabase();
-    await db.delete();
+    await Promise.all([
+      openCubeDatabase().delete(),
+      openProcedureDatabase().delete(),
+    ]);
     await loadCubes();
   } catch (error) {
     status.textContent = `Could not delete cube database: ${error.message}`;
@@ -150,4 +200,6 @@ importInput.addEventListener("change", () => {
 });
 deleteModelButton.addEventListener("click", deleteSelectedModel);
 deleteAllButton.addEventListener("click", deleteAllData);
+cubesTab.addEventListener("click", () => showTab("cubes"));
+proceduresTab.addEventListener("click", () => showTab("procedures"));
 loadCubes();

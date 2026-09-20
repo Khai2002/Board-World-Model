@@ -32,8 +32,7 @@ async function populateEntityOverlay(panelEl, overlay) {
   }
 
   try {
-    const { data } = await callBoardAPI('getAllCubes', { dbname: modelPath });
-    const cubes = normalizeCubeList(data);
+    const cubes = normalizeCubeList(await boardApi.getAllCubes(modelPath));
     const cube = cubes.find((item) => item.extended?.trim?.() === selectedCubeName);
     const cubeIdx = cube?.idx;
 
@@ -42,10 +41,7 @@ async function populateEntityOverlay(panelEl, overlay) {
       return;
     }
 
-    const { data: impactAnalysis } = await callBoardAPI(
-      'getCubeImpact',
-      { dbname: modelPath, uniqueId: cubeIdx },
-    );
+    const impactAnalysis = await boardApi.getCubeImpact(modelPath, cubeIdx);
     const impactJson = JSON.stringify(impactAnalysis, null, 2) ?? 'undefined';
 
     overlay.innerHTML = '';
