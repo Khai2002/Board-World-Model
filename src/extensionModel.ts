@@ -138,7 +138,7 @@ function procedureKey(procedure: Procedure): string {
 }
 
 export function printTest(): void {
-    analyzeProcedureSteps("f8ddb8dd-e085-42aa-87e5-6ecac98d8b85", "FIN");
+    analyzeProcedureSteps("e91cf58b-260b-4a6c-a8c4-7ab837022505", "FIN");
 }
 
 declare global {

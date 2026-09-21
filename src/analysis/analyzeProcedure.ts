@@ -15,11 +15,14 @@ export async function analyzeProcedureSteps(name: string, defaultDatabase: strin
 
     const procedure: Procedure = Procedure.fromJSON(procedureJSON);
     console.log(procedure);
-    console.log(procedure.getStepsByType(DataflowStep).map(dStep => extractVariables(dStep.expression)));
-    console.log(procedure.getStepsByType(DataflowStep)
-                        .flatMap(dStep => dStep.layouts)
-                        .flatMap(layouts => layouts.blocks)
-                        .map(block => ({ letter: block.letter, idx: block.cubeIdx })))
+    console.log(procedure.getStepsByType(DataflowStep).map(dStep => ({
+      database: procedure.defaultDatabase,
+      target: dStep.targetLetter,
+      sources: extractVariables(dStep.expression),
+      blocks: dStep.layouts
+        .flatMap(layout => layout.blocks)
+        .map(block => ({ letter: block.letter, idx: block.cubeIdx }))
+    })));
 }
 
 function extractVariables(expression: string): string[] {
