@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:extension": "vite build --config vite.extension.config.ts --watch",
+    "dev:background": "vite build --config vite.background.config.ts --watch",
+    "dev:watch": "concurrently \"npm run dev:extension\" \"npm run dev:background\"",
     "build": "tsc && vite build --config vite.extension.config.ts && vite build --config vite.background.config.ts",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
   },

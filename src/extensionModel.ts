@@ -5,6 +5,7 @@ import type { ProcedureJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
+import { analyzeProcedureSteps } from "./analysis/analyzeProcedure"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -136,6 +137,10 @@ function procedureKey(procedure: Procedure): string {
     return `${procedure.defaultDatabase}:${procedure.name}`
 }
 
+export function printTest(): void {
+    analyzeProcedureSteps("f8ddb8dd-e085-42aa-87e5-6ecac98d8b85", "FIN");
+}
+
 declare global {
     interface Window {
         BoardWorldModel: {
@@ -146,6 +151,7 @@ declare global {
             openCubeDatabase: typeof openCubeDatabase
             ProcedureDatabase: typeof ProcedureDatabase
             openProcedureDatabase: typeof openProcedureDatabase
+            printTest: typeof printTest
         }
     }
 }
@@ -158,4 +164,5 @@ window.BoardWorldModel = {
     openCubeDatabase,
     ProcedureDatabase,
     openProcedureDatabase,
+    printTest,
 }

@@ -6,13 +6,52 @@ const importInput = document.getElementById("importInput");
 const modelSelect = document.getElementById("modelSelect");
 const deleteModelButton = document.getElementById("deleteModelButton");
 const deleteAllButton = document.getElementById("deleteAllButton");
+const testPrintButton = document.getElementById("testPrintButton");
 const cubesTab = document.getElementById("cubesTab");
 const proceduresTab = document.getElementById("proceduresTab");
 const cubesPanel = document.getElementById("cubesPanel");
 const proceduresPanel = document.getElementById("proceduresPanel");
+const tabs = document.querySelector(".tabs");
 const proceduresList = document.getElementById("procedures");
 const cubeStorageSize = document.getElementById("cubeStorageSize");
 const procedureStorageSize = document.getElementById("procedureStorageSize");
+
+const detailsTab = document.createElement("button");
+detailsTab.className = "tab";
+detailsTab.id = "detailsTab";
+detailsTab.type = "button";
+detailsTab.setAttribute("role", "tab");
+detailsTab.setAttribute("aria-selected", "false");
+detailsTab.textContent = "Details";
+detailsTab.hidden = true;
+tabs.appendChild(detailsTab);
+
+const detailsPanel = document.createElement("section");
+detailsPanel.className = "tab-panel";
+detailsPanel.id = "detailsPanel";
+detailsPanel.setAttribute("role", "tabpanel");
+detailsPanel.hidden = true;
+const detailsHeading = document.createElement("h2");
+const copyDetailsButton = document.createElement("button");
+copyDetailsButton.type = "button";
+copyDetailsButton.textContent = "Copy JSON";
+copyDetailsButton.style.marginBottom = "8px";
+const detailsOutput = document.createElement("pre");
+Object.assign(detailsOutput.style, {
+  margin: "0",
+  padding: "12px",
+  overflow: "auto",
+  maxHeight: "65vh",
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+  background: "#f5f5f5",
+  border: "1px solid #ddd",
+  borderRadius: "4px",
+  fontSize: "12px",
+  lineHeight: "1.5",
+});
+detailsPanel.append(detailsHeading, copyDetailsButton, detailsOutput);
+document.body.appendChild(detailsPanel);
 
 function openCubeDatabase() {
   return window.BoardWorldModel.openCubeDatabase();
@@ -38,6 +77,60 @@ function formatBytes(bytes) {
 function estimateBytes(records) {
   return new Blob([JSON.stringify(records)]).size;
 }
+
+async function copyDetailsJson() {
+  const json = detailsOutput.textContent || "";
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(json);
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = json;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      textArea.remove();
+    }
+    copyDetailsButton.textContent = "Copied";
+    setTimeout(() => { copyDetailsButton.textContent = "Copy JSON"; }, 1500);
+  } catch (error) {
+    console.error("Could not copy dashboard JSON:", error);
+    copyDetailsButton.textContent = "Copy failed";
+    setTimeout(() => { copyDetailsButton.textContent = "Copy JSON"; }, 1500);
+  }
+}
+
+function showDetails(title, data) {
+  detailsHeading.textContent = title;
+  detailsOutput.textContent = JSON.stringify(data, null, 2);
+  detailsTab.hidden = false;
+  detailsTab.classList.add("active");
+  detailsTab.setAttribute("aria-selected", "true");
+  cubesTab.classList.remove("active");
+  proceduresTab.classList.remove("active");
+  cubesTab.setAttribute("aria-selected", "false");
+  proceduresTab.setAttribute("aria-selected", "false");
+  cubesPanel.hidden = true;
+  proceduresPanel.hidden = true;
+  detailsPanel.hidden = false;
+}
+
+function makeClickableItem(item, onOpen) {
+  item.tabIndex = 0;
+  item.setAttribute("role", "button");
+  item.style.cursor = "pointer";
+  item.addEventListener("click", onOpen);
+  item.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpen();
+    }
+  });
+}
+
+copyDetailsButton.addEventListener("click", copyDetailsJson);
 
 async function getBackup() {
   const db = openCubeDatabase();
@@ -99,6 +192,14 @@ async function loadCubes() {
       const id = document.createElement("code");
       id.textContent = `(${cube.modelId}:${cube.cubeId})`;
       item.appendChild(id);
+      const relatedEdges = cubeEdges.filter(edge =>
+        (edge.fromModelId === cube.modelId && edge.fromCubeId === cube.cubeId) ||
+        (edge.toModelId === cube.modelId && edge.toCubeId === cube.cubeId)
+      );
+      makeClickableItem(item, () => showDetails(`Cube: ${cube.name || "Unnamed cube"}`, {
+        cube,
+        relatedEdges,
+      }));
       cubesList.appendChild(item);
     }
   } catch (error) {
@@ -127,6 +228,11 @@ async function loadProcedures() {
       const detailState = document.createElement("span");
       detailState.textContent = detailIds.has(procedure.id) ? " · details loaded" : " · metadata only";
       item.appendChild(detailState);
+      const detail = details.find(candidate => candidate.id === procedure.id);
+      makeClickableItem(item, () => showDetails(
+        `Procedure: ${procedure.description || "Unnamed procedure"}`,
+        { metadata: procedure, details: detail ?? null },
+      ));
       proceduresList.appendChild(item);
     }
   } catch (error) {
@@ -138,10 +244,13 @@ function showTab(tab) {
   const showProcedures = tab === "procedures";
   cubesTab.classList.toggle("active", !showProcedures);
   proceduresTab.classList.toggle("active", showProcedures);
+  detailsTab.classList.remove("active");
   cubesTab.setAttribute("aria-selected", String(!showProcedures));
   proceduresTab.setAttribute("aria-selected", String(showProcedures));
+  detailsTab.setAttribute("aria-selected", "false");
   cubesPanel.hidden = showProcedures;
   proceduresPanel.hidden = !showProcedures;
+  detailsPanel.hidden = true;
   if (showProcedures) loadProcedures();
   else loadCubes();
 }
@@ -217,6 +326,11 @@ importInput.addEventListener("change", () => {
 });
 deleteModelButton.addEventListener("click", deleteSelectedModel);
 deleteAllButton.addEventListener("click", deleteAllData);
+testPrintButton.addEventListener("click", () => window.BoardWorldModel.printTest());
 cubesTab.addEventListener("click", () => showTab("cubes"));
 proceduresTab.addEventListener("click", () => showTab("procedures"));
+detailsTab.addEventListener("click", () => {
+  detailsTab.hidden = false;
+  detailsPanel.hidden = false;
+});
 loadCubes();

@@ -25,6 +25,10 @@ export default class ProcedureDatabase extends Dexie {
         })
     }
 
+    async getDetailsById(id: string): Promise<ProcedureRecord | undefined> {
+        return this.procedures.get(id)
+    }
+
     static getId(procedure: Pick<ProcedureMetadataJSON, "name" | "defaultDatabase">): string {
         return `${procedure.defaultDatabase}:${procedure.name}`
     }
