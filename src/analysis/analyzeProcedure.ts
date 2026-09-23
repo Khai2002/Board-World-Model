@@ -4,7 +4,10 @@ import DataflowStep from "../procedure/step/DataflowStep";
 import CubeDatabase, { type CubeEdge } from "../cube/CubeDatabase";
 
 
-export async function analyzeDataflowDependency(name: string, defaultDatabase: string): Promise<void> {
+export async function createCubeEdgesFromDataflow(
+  name: string,
+  defaultDatabase: string,
+): Promise<number> {
   const pDb = new ProcedureDatabase();
   const cDb = new CubeDatabase();
 
@@ -13,7 +16,7 @@ export async function analyzeDataflowDependency(name: string, defaultDatabase: s
   
   if(!procedureJSON) {
       console.log(`Cannot find procedure with key ${procedureId}`);
-      return;
+      return 0;
   }
 
   const procedure: Procedure = Procedure.fromJSON(procedureJSON);
@@ -52,24 +55,24 @@ export async function analyzeDataflowDependency(name: string, defaultDatabase: s
 
       edges.push({
         id: CubeDatabase.getEdgeId(
-          dataflow.database,
+          defaultDatabase,
           sourceBlock.idx,
-          dataflow.database,
+          defaultDatabase,
           targetBlock.idx,
         ),
-        fromModelId: dataflow.database,
+        fromModelId: defaultDatabase,
         fromCubeId: sourceBlock.idx,
-        toModelId: dataflow.database,
+        toModelId: defaultDatabase,
         toCubeId: targetBlock.idx,
       });
     }
   }
 
-  console.log(edges)
-
   if (edges.length > 0) {
-    //await cDb.cubeEdges.bulkPut(edges);
+    await cDb.cubeEdges.bulkPut(edges);
   }
+
+  return edges.length;
 }
 
 

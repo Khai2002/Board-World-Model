@@ -5,7 +5,7 @@ import type { ProcedureJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
-import { analyzeDataflowDependency } from "./analysis/analyzeProcedure"
+import { createCubeEdgesFromDataflow } from "./analysis/analyzeProcedure"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -138,7 +138,7 @@ function procedureKey(procedure: Procedure): string {
 }
 
 export function printTest(): void {
-    analyzeDataflowDependency("e91cf58b-260b-4a6c-a8c4-7ab837022505", "FIN");
+    createCubeEdgesFromDataflow("e91cf58b-260b-4a6c-a8c4-7ab837022505", "FIN");
 }
 
 declare global {
@@ -147,6 +147,7 @@ declare global {
             createProcedureModel: typeof createProcedureModel
             createRecursiveProcedureModel: typeof createRecursiveProcedureModel
             getWrittenDataflowBlocks: typeof getWrittenDataflowBlocks
+            createCubeEdgesFromDataflow: typeof createCubeEdgesFromDataflow
             CubeDatabase: typeof CubeDatabase
             openCubeDatabase: typeof openCubeDatabase
             ProcedureDatabase: typeof ProcedureDatabase
@@ -160,6 +161,7 @@ window.BoardWorldModel = {
     createProcedureModel,
     createRecursiveProcedureModel,
     getWrittenDataflowBlocks,
+    createCubeEdgesFromDataflow,
     CubeDatabase,
     openCubeDatabase,
     ProcedureDatabase,

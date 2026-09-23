@@ -200,10 +200,26 @@ async function saveProcedures() {
       await db.procedures.bulkPut(detailRows);
     });
 
+    const mismatchedProcedure = detailRows.find(
+      (procedure) => procedure.defaultDatabase !== modelId,
+    );
+    if (mismatchedProcedure) {
+      throw new Error(
+        `Procedure database ${mismatchedProcedure.defaultDatabase} does not match model ${modelId}.`,
+      );
+    }
+
+    const edgeCount = await Promise.all(detailRows.map((procedure) =>
+      window.BoardWorldModel.createCubeEdgesFromDataflow(
+        procedure.name,
+        procedure.defaultDatabase,
+      )
+    )).then((counts) => counts.reduce((total, count) => total + count, 0));
+
     modelLine.textContent = `${modelId} · ${metadataRows.length} procedures stored`;
     output.className = "";
     output.textContent = JSON.stringify(metadataRows, null, 2);
-    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records in batches of ${PROCEDURE_BATCH_SIZE}`;
+    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records, ${edgeCount} cube edges`;
   } catch (error) {
     renderError(error.message);
   }
