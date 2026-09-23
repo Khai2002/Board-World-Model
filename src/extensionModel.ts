@@ -5,7 +5,7 @@ import type { ProcedureJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
-import { analyzeProcedureSteps } from "./analysis/analyzeProcedure"
+import { analyzeDataflowDependency } from "./analysis/analyzeProcedure"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -138,7 +138,7 @@ function procedureKey(procedure: Procedure): string {
 }
 
 export function printTest(): void {
-    analyzeProcedureSteps("e91cf58b-260b-4a6c-a8c4-7ab837022505", "FIN");
+    analyzeDataflowDependency("e91cf58b-260b-4a6c-a8c4-7ab837022505", "FIN");
 }
 
 declare global {

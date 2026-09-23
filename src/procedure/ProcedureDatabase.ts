@@ -16,6 +16,10 @@ export default class ProcedureDatabase extends Dexie {
     procedureMetadata!: EntityTable<ProcedureMetadata, "id">
     procedures!: EntityTable<ProcedureRecord, "id">
 
+    static getId(procedure: Pick<ProcedureMetadataJSON, "name" | "defaultDatabase">): string {
+        return `${procedure.defaultDatabase}:${procedure.name}`
+    }
+
     constructor(name = "procedure-model") {
         super(name)
 
@@ -29,7 +33,8 @@ export default class ProcedureDatabase extends Dexie {
         return this.procedures.get(id)
     }
 
-    static getId(procedure: Pick<ProcedureMetadataJSON, "name" | "defaultDatabase">): string {
-        return `${procedure.defaultDatabase}:${procedure.name}`
+    async getDetailsByDatabaseAndIdx(database: string, idx: string): Promise<ProcedureRecord | undefined> {
+        const id = ProcedureDatabase.getId({defaultDatabase: database, name: idx});
+        return this.procedures.get(id);
     }
 }

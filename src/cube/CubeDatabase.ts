@@ -11,7 +11,7 @@ export type CubeNode = {
 
 /** A directed dataflow edge row stored in the graph table. */
 export type CubeEdge = {
-    id?: number
+    id: string
     fromModelId: string
     fromCubeId: string | number
     toModelId: string
@@ -27,22 +27,30 @@ export default class CubeDatabase extends Dexie {
         return `${modelId}:${cubeId}`
     }
 
+    static getEdgeId(
+        fromModelId: string,
+        fromCubeId: string | number,
+        toModelId: string,
+        toCubeId: string | number,
+    ): string {
+        return `${CubeDatabase.getId(fromModelId, fromCubeId)}->${CubeDatabase.getId(toModelId, toCubeId)}`
+    }
+
     constructor(name = "cube-model") {
         super(name)
 
         this.version(1).stores({
             cubes: "&id, modelId, cubeId, [modelId+cubeId]",
-            cubeEdges: "++id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
+            cubeEdges: "&id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
         })
-        this.version(2).stores({
-            cubes: "&id, modelId, cubeId, [modelId+cubeId]",
-            cubeEdges: "++id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
-            cubeImpacts: "&id, modelId, cubeId, [modelId+cubeId]",
-        })
-        this.version(3).stores({
-            cubes: "&id, modelId, cubeId, [modelId+cubeId]",
-            cubeEdges: "++id, fromModelId, fromCubeId, toModelId, toCubeId, [fromModelId+fromCubeId], [toModelId+toCubeId], [fromModelId+fromCubeId+toModelId+toCubeId]",
-            cubeImpacts: null,
-        })
+    }
+
+    async getCubeById(id: string): Promise<CubeNode | undefined> {
+        return this.cubes.get(id);
+    }
+
+    async getCubeByDatabaseAndIdx(database: string, idx: string | number): Promise<CubeNode | undefined> {
+        const id = CubeDatabase.getId(database, idx)
+        return this.cubes.get(id);
     }
 }
