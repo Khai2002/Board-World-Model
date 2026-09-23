@@ -6,7 +6,6 @@ const importInput = document.getElementById("importInput");
 const modelSelect = document.getElementById("modelSelect");
 const deleteModelButton = document.getElementById("deleteModelButton");
 const deleteAllButton = document.getElementById("deleteAllButton");
-const testPrintButton = document.getElementById("testPrintButton");
 const cubesTab = document.getElementById("cubesTab");
 const proceduresTab = document.getElementById("proceduresTab");
 const cubesPanel = document.getElementById("cubesPanel");
@@ -15,6 +14,8 @@ const tabs = document.querySelector(".tabs");
 const proceduresList = document.getElementById("procedures");
 const cubeStorageSize = document.getElementById("cubeStorageSize");
 const procedureStorageSize = document.getElementById("procedureStorageSize");
+const cubeSearch = document.getElementById("cubeSearch");
+const procedureSearch = document.getElementById("procedureSearch");
 
 const detailsTab = document.createElement("button");
 detailsTab.className = "tab";
@@ -22,6 +23,8 @@ detailsTab.id = "detailsTab";
 detailsTab.type = "button";
 detailsTab.setAttribute("role", "tab");
 detailsTab.setAttribute("aria-selected", "false");
+detailsTab.setAttribute("aria-disabled", "true");
+detailsTab.disabled = true;
 detailsTab.textContent = "Details";
 detailsTab.hidden = true;
 tabs.appendChild(detailsTab);
@@ -37,6 +40,31 @@ copyDetailsButton.type = "button";
 copyDetailsButton.textContent = "Copy JSON";
 copyDetailsButton.style.marginBottom = "8px";
 const detailsOutput = document.createElement("pre");
+const graphHeading = document.createElement("h2");
+graphHeading.textContent = "Cube graph";
+graphHeading.hidden = true;
+const graphDirectionSelect = document.createElement("select");
+graphDirectionSelect.setAttribute("aria-label", "Graph connections");
+graphDirectionSelect.append(
+  new Option("All connections", "all"),
+  new Option("Upstream only", "incoming"),
+  new Option("Downstream only", "outgoing"),
+);
+graphDirectionSelect.hidden = true;
+const graphDepthSelect = document.createElement("select");
+graphDepthSelect.setAttribute("aria-label", "Graph depth");
+graphDepthSelect.appendChild(new Option("All levels", "all"));
+graphDepthSelect.hidden = true;
+const graphFocusSelect = document.createElement("select");
+graphFocusSelect.setAttribute("aria-label", "Focus cube");
+graphFocusSelect.hidden = true;
+const clearGraphFocusButton = document.createElement("button");
+clearGraphFocusButton.type = "button";
+clearGraphFocusButton.textContent = "Clear focus";
+clearGraphFocusButton.hidden = true;
+const graphOutput = document.createElement("div");
+graphOutput.id = "cubeGraph";
+graphOutput.hidden = true;
 Object.assign(detailsOutput.style, {
   margin: "0",
   padding: "12px",
@@ -50,8 +78,24 @@ Object.assign(detailsOutput.style, {
   fontSize: "12px",
   lineHeight: "1.5",
 });
-detailsPanel.append(detailsHeading, copyDetailsButton, detailsOutput);
+detailsPanel.append(graphHeading, graphDirectionSelect, graphDepthSelect, graphFocusSelect, clearGraphFocusButton, graphOutput, detailsHeading, copyDetailsButton, detailsOutput);
 document.body.appendChild(detailsPanel);
+
+let cubeGraphNetwork;
+let graphRequestId = 0;
+let currentGraphCube;
+let currentGraphFocusId;
+const graphGroupColors = [
+  { background: "#dbeafe", border: "#2563eb" },
+  { background: "#dcfce7", border: "#16a34a" },
+  { background: "#fef3c7", border: "#d97706" },
+  { background: "#fce7f3", border: "#db2777" },
+  { background: "#ede9fe", border: "#7c3aed" },
+  { background: "#cffafe", border: "#0891b2" },
+  { background: "#ffedd5", border: "#ea580c" },
+];
+const unassignedGroupColor = { background: "#f1f5f9", border: "#64748b" };
+const graphGroupColorByName = new Map();
 
 function openCubeDatabase() {
   return window.BoardWorldModel.openCubeDatabase();
@@ -102,9 +146,23 @@ async function copyDetailsJson() {
   }
 }
 
-function showDetails(title, data) {
+function showDetails(title, data, viewState) {
+  const requestId = ++graphRequestId;
   detailsHeading.textContent = title;
   detailsOutput.textContent = JSON.stringify(data, null, 2);
+  graphHeading.hidden = !data.cube;
+  graphDirectionSelect.hidden = !data.cube;
+  graphDepthSelect.hidden = !data.cube;
+  graphFocusSelect.hidden = !data.cube;
+  clearGraphFocusButton.hidden = !data.cube;
+  graphDepthSelect.value = "all";
+  currentGraphFocusId = undefined;
+  graphOutput.hidden = !data.cube;
+  currentGraphCube = data.cube;
+  if (cubeGraphNetwork) {
+    cubeGraphNetwork.destroy();
+    cubeGraphNetwork = undefined;
+  }
   detailsTab.hidden = false;
   detailsTab.classList.add("active");
   detailsTab.setAttribute("aria-selected", "true");
@@ -115,6 +173,209 @@ function showDetails(title, data) {
   cubesPanel.hidden = true;
   proceduresPanel.hidden = true;
   detailsPanel.hidden = false;
+  if (data.cube) renderCubeGraph(data.cube, requestId, viewState);
+}
+
+graphDirectionSelect.addEventListener("change", () => {
+  if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+});
+
+graphDepthSelect.addEventListener("change", () => {
+  if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+});
+
+graphFocusSelect.addEventListener("change", () => {
+  currentGraphFocusId = graphFocusSelect.value || undefined;
+  if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+});
+
+clearGraphFocusButton.addEventListener("click", () => {
+  currentGraphFocusId = undefined;
+  if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+});
+
+function cubeNodeId(modelId, cubeId) {
+  return `${modelId}:${cubeId}`;
+}
+
+function cubeLabel(cube) {
+  return `${cube.name || "Unnamed cube"}\n(${cube.modelId}:${cube.cubeId})`;
+}
+
+async function selectGraphCube(cube) {
+  const viewState = cubeGraphNetwork
+    ? { scale: cubeGraphNetwork.getScale() }
+    : undefined;
+  const cubeEdges = await openCubeDatabase().cubeEdges.toArray();
+  const relatedEdges = cubeEdges.filter(edge =>
+    (edge.fromModelId === cube.modelId && edge.fromCubeId === cube.cubeId) ||
+    (edge.toModelId === cube.modelId && edge.toCubeId === cube.cubeId)
+  );
+  showDetails(`Cube: ${cube.name || "Unnamed cube"}`, { cube, relatedEdges }, viewState);
+}
+
+function cubeAssignedGroup(cube) {
+  if (cube.data && typeof cube.data === "object" && typeof cube.data.assignedGroup === "string") {
+    return cube.data.assignedGroup;
+  }
+  return "Unassigned";
+}
+
+function graphColorForGroup(group) {
+  if (!graphGroupColorByName.has(group)) {
+    const color = graphGroupColors[graphGroupColorByName.size % graphGroupColors.length];
+    graphGroupColorByName.set(group, color || unassignedGroupColor);
+  }
+  return graphGroupColorByName.get(group) || unassignedGroupColor;
+}
+
+async function renderCubeGraph(selectedCube, requestId, viewState) {
+  graphOutput.textContent = "Loading graph...";
+  try {
+    const db = openCubeDatabase();
+    const [cubes, graph] = await Promise.all([
+      db.cubes.toArray(),
+      window.BoardWorldModel.loadCubeGraphWrapper(),
+    ]);
+    if (requestId !== graphRequestId) return;
+
+    const cubesById = new Map(cubes.map(cube => [cubeNodeId(cube.modelId, cube.cubeId), cube]));
+    const selectedId = cubeNodeId(selectedCube.modelId, selectedCube.cubeId);
+    const levels = new Map([[selectedId, 0]]);
+    const queue = [selectedId];
+    while (queue.length) {
+      const currentId = queue.shift();
+      const neighbors = graphDirectionSelect.value === "incoming"
+        ? graph.predecessors(currentId)
+        : graphDirectionSelect.value === "outgoing"
+          ? graph.children(currentId)
+          : [...graph.children(currentId), ...graph.predecessors(currentId)];
+      for (const neighborId of neighbors) {
+        if (!levels.has(neighborId)) {
+          levels.set(neighborId, levels.get(currentId) + 1);
+          queue.push(neighborId);
+        }
+      }
+    }
+
+    const maxLevel = Math.max(...levels.values());
+    const previousDepth = graphDepthSelect.value;
+    graphDepthSelect.replaceChildren(new Option("All levels", "all"));
+    for (let level = 1; level <= maxLevel; level += 1) {
+      graphDepthSelect.appendChild(new Option(`Depth ${level}`, String(level)));
+    }
+    if (previousDepth && previousDepth !== "all" && Number(previousDepth) <= maxLevel) {
+      graphDepthSelect.value = previousDepth;
+    } else {
+      graphDepthSelect.value = "all";
+    }
+
+    const selectedDepth = graphDepthSelect.value === "all"
+      ? Infinity
+      : Number(graphDepthSelect.value);
+    const connectedIds = new Set(
+      [...levels.entries()]
+        .filter(([, level]) => level <= selectedDepth)
+        .map(([nodeId]) => nodeId),
+    );
+
+    if (currentGraphFocusId === selectedId || !connectedIds.has(currentGraphFocusId)) {
+      currentGraphFocusId = undefined;
+    }
+    const focusOptions = [...connectedIds]
+      .filter(id => id !== selectedId)
+      .map(id => cubesById.get(id))
+      .filter(Boolean)
+      .sort((left, right) => cubeLabel(left).localeCompare(cubeLabel(right)));
+    graphFocusSelect.replaceChildren(new Option("Focus on a cube", ""), ...focusOptions.map(cube =>
+      new Option(cubeLabel(cube).replace("\n", " "), cubeNodeId(cube.modelId, cube.cubeId))
+    ));
+    graphFocusSelect.value = currentGraphFocusId || "";
+
+    const visibleIds = new Set(connectedIds);
+    if (currentGraphFocusId) {
+      const focusPath = graphDirectionSelect.value === "incoming"
+        ? graph.findPath(currentGraphFocusId, selectedId)
+        : graphDirectionSelect.value === "outgoing"
+          ? graph.findPath(selectedId, currentGraphFocusId)
+          : graph.findPath(selectedId, currentGraphFocusId) ||
+            graph.findPath(currentGraphFocusId, selectedId);
+      for (const nodeId of focusPath || []) visibleIds.add(nodeId);
+      for (const nodeId of [...connectedIds]) {
+        if (!focusPath?.includes(nodeId) && nodeId !== selectedId && nodeId !== currentGraphFocusId) {
+          visibleIds.delete(nodeId);
+        }
+      }
+    }
+
+    const nodes = [...visibleIds].map(id => {
+      const cube = cubesById.get(id);
+      const group = cube ? cubeAssignedGroup(cube) : "Unassigned";
+      const groupColor = graphColorForGroup(group);
+      return {
+        id,
+        label: cube ? cubeLabel(cube) : id,
+        title: cube ? `${group}\n${JSON.stringify(cube, null, 2)}` : id,
+        level: levels.get(id) ?? 0,
+        shape: id === selectedId ? "ellipse" : "box",
+        size: id === selectedId ? 28 : undefined,
+        borderWidth: id === selectedId ? 3 : 1,
+        color: {
+          background: groupColor.background,
+          border: id === selectedId ? "#202124" : groupColor.border,
+          hover: { background: groupColor.background, border: "#202124" },
+          highlight: { background: groupColor.background, border: "#202124" },
+        },
+      };
+    });
+    const edges = [...visibleIds].flatMap(from => graph.children(from)
+      .filter(to => visibleIds.has(to))
+      .map(to => ({ id: `${from}->${to}`, from, to, arrows: "to" })));
+
+    graphOutput.replaceChildren();
+    const network = new vis.Network(
+      graphOutput,
+      { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) },
+      {
+        interaction: { hover: true, navigationButtons: true, keyboard: true, dragNodes: true },
+        physics: {
+          enabled: true,
+          stabilization: { iterations: 300 },
+          solver: "barnesHut",
+          barnesHut: {
+            gravitationalConstant: -3000,
+            centralGravity: 0.15,
+            springLength: 180,
+            springConstant: 0.04,
+            damping: 0.09,
+            avoidOverlap: 1,
+          },
+        },
+        nodes: { shape: "box", margin: 12, font: { multi: "html", size: 14 } },
+        edges: { color: "#5f6368", smooth: { type: "cubicBezier", forceDirection: "horizontal", roundness: 0.4 } },
+      },
+    );
+    network.once("stabilizationIterationsDone", () => {
+      network.setOptions({ physics: { enabled: false } });
+      if (viewState?.scale) {
+        network.moveTo({
+          position: network.getPosition(selectedId),
+          scale: viewState.scale,
+          animation: false,
+        });
+      }
+    });
+    network.on("doubleClick", ({ nodes }) => {
+      const [nodeId] = nodes;
+      const cube = cubesById.get(nodeId);
+      if (cube) selectGraphCube(cube);
+    });
+    cubeGraphNetwork = network;
+  } catch (error) {
+    if (requestId === graphRequestId) {
+      graphOutput.textContent = `Could not render cube graph: ${error.message}`;
+    }
+  }
 }
 
 function makeClickableItem(item, onOpen) {
@@ -130,7 +391,16 @@ function makeClickableItem(item, onOpen) {
   });
 }
 
+function filterList(list, query) {
+  const normalizedQuery = query.trim().toLowerCase();
+  for (const item of list.children) {
+    item.hidden = normalizedQuery !== "" && !item.dataset.search.includes(normalizedQuery);
+  }
+}
+
 copyDetailsButton.addEventListener("click", copyDetailsJson);
+cubeSearch.addEventListener("input", () => filterList(cubesList, cubeSearch.value));
+procedureSearch.addEventListener("input", () => filterList(proceduresList, procedureSearch.value));
 
 async function getBackup() {
   const db = openCubeDatabase();
@@ -188,6 +458,9 @@ async function loadCubes() {
     status.textContent = `${cubes.length} cube${cubes.length === 1 ? "" : "s"} stored`;
     for (const cube of cubes) {
       const item = document.createElement("li");
+      item.dataset.search = [cube.name, cube.modelId, cube.cubeId, `${cube.modelId}:${cube.cubeId}`]
+        .join(" ")
+        .toLowerCase();
       item.textContent = `${cube.name || "Unnamed cube"} `;
       const id = document.createElement("code");
       id.textContent = `(${cube.modelId}:${cube.cubeId})`;
@@ -202,6 +475,7 @@ async function loadCubes() {
       }));
       cubesList.appendChild(item);
     }
+    filterList(cubesList, cubeSearch.value);
   } catch (error) {
     status.textContent = `Could not read cube database: ${error.message}`;
   }
@@ -221,6 +495,15 @@ async function loadProcedures() {
     status.textContent = `${metadata.length} procedure${metadata.length === 1 ? "" : "s"} stored · ${details.length} detailed`;
     for (const procedure of metadata.sort((left, right) => left.description.localeCompare(right.description))) {
       const item = document.createElement("li");
+      item.dataset.search = [
+        procedure.description,
+        procedure.name,
+        procedure.defaultDatabase,
+        `${procedure.defaultDatabase}:${procedure.name}`,
+        procedure.id,
+      ]
+        .join(" ")
+        .toLowerCase();
       item.textContent = `${procedure.description || "Unnamed procedure"} `;
       const id = document.createElement("code");
       id.textContent = `(${procedure.defaultDatabase}:${procedure.name})`;
@@ -235,6 +518,7 @@ async function loadProcedures() {
       ));
       proceduresList.appendChild(item);
     }
+    filterList(proceduresList, procedureSearch.value);
   } catch (error) {
     status.textContent = `Could not read procedure database: ${error.message}`;
   }
@@ -326,11 +610,6 @@ importInput.addEventListener("change", () => {
 });
 deleteModelButton.addEventListener("click", deleteSelectedModel);
 deleteAllButton.addEventListener("click", deleteAllData);
-testPrintButton.addEventListener("click", () => window.BoardWorldModel.printTest());
 cubesTab.addEventListener("click", () => showTab("cubes"));
 proceduresTab.addEventListener("click", () => showTab("procedures"));
-detailsTab.addEventListener("click", () => {
-  detailsTab.hidden = false;
-  detailsPanel.hidden = false;
-});
 loadCubes();

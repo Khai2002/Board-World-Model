@@ -5,7 +5,8 @@
   <title>Board World Model Dashboard</title>
   <style>
     body { margin: 32px; color: #202124; font: 14px system-ui, sans-serif; }
-    h1 { margin-top: 0; }
+    .dashboard-header { display: flex; align-items: center; gap: 12px; min-height: 32px; }
+    h1 { margin: 0; font-size: 20px; }
     #status { color: #5f6368; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
     button, select { padding: 6px 8px; font: inherit; }
@@ -18,15 +19,21 @@
     li { margin: 8px 0; }
     code { color: #174ea6; }
     .storage-size { margin: 12px 0; color: #5f6368; }
+    .search { width: min(100%, 420px); padding: 7px 8px; font: inherit; }
+    #cubeGraph { width: 100%; height: min(80vh, 900px); min-height: 650px; border: 1px solid #dadce0; border-radius: 4px; margin-top: 16px; }
+    #deleteAllButton { margin-left: auto; }
+    @media (max-width: 560px) {
+      .dashboard-header { align-items: flex-start; flex-wrap: wrap; }
+      #deleteAllButton { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
-  <h1>Board World Model</h1>
-  <p id="status">Reading stored data…</p>
-  <div class="actions">
-    <button id="testPrintButton" type="button">Test print</button>
+  <div class="dashboard-header">
+    <h1>Board World Model</h1>
     <button id="deleteAllButton" class="danger" type="button">Delete all local data</button>
   </div>
+  <p id="status">Reading stored data…</p>
   <div class="tabs" role="tablist" aria-label="Stored data">
     <button class="tab active" id="cubesTab" type="button" role="tab" aria-selected="true">Cubes</button>
     <button class="tab" id="proceduresTab" type="button" role="tab" aria-selected="false">Procedures</button>
@@ -42,13 +49,16 @@
       <button id="deleteModelButton" type="button">Delete selected model</button>
     </div>
     <p id="cubeStorageSize" class="storage-size"></p>
+    <input id="cubeSearch" class="search" type="search" placeholder="Search cubes" aria-label="Search cubes">
     <ul id="cubes"></ul>
   </section>
   <section class="tab-panel" id="proceduresPanel" role="tabpanel" hidden>
     <p id="procedureStorageSize" class="storage-size"></p>
+    <input id="procedureSearch" class="search" type="search" placeholder="Search procedures" aria-label="Search procedures">
     <ul id="procedures"></ul>
   </section>
   <script src="assets/board-world-model.js"></script>
+  <script src="vis-network.min.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

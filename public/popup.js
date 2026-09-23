@@ -210,7 +210,7 @@ async function saveProcedures() {
     }
 
     const edgeCount = await Promise.all(detailRows.map((procedure) =>
-      window.BoardWorldModel.createCubeEdgesFromDataflow(
+      window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
         procedure.name,
         procedure.defaultDatabase,
       )

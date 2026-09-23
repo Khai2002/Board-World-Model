@@ -6,6 +6,7 @@ import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
 import { createCubeEdgesFromDataflow } from "./analysis/analyzeProcedure"
+import { loadCubeGraph } from "./graph/cubeGraph"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -55,6 +56,17 @@ export function openCubeDatabase(): CubeDatabase {
 
 export function openProcedureDatabase(): ProcedureDatabase {
     return new ProcedureDatabase()
+}
+
+export function loadCubeGraphWrapper() {
+    return loadCubeGraph(new CubeDatabase())
+}
+
+export async function createCubeEdgesFromDataflowWrapper(
+    name: string,
+    defaultDatabase: string,
+): Promise<number> {
+    return createCubeEdgesFromDataflow(name, defaultDatabase)
 }
 
 function asProcedureJSON(data: unknown): ProcedureJSON {
@@ -148,7 +160,9 @@ declare global {
             createRecursiveProcedureModel: typeof createRecursiveProcedureModel
             getWrittenDataflowBlocks: typeof getWrittenDataflowBlocks
             createCubeEdgesFromDataflow: typeof createCubeEdgesFromDataflow
+            createCubeEdgesFromDataflowWrapper: typeof createCubeEdgesFromDataflowWrapper
             CubeDatabase: typeof CubeDatabase
+            loadCubeGraphWrapper: typeof loadCubeGraphWrapper
             openCubeDatabase: typeof openCubeDatabase
             ProcedureDatabase: typeof ProcedureDatabase
             openProcedureDatabase: typeof openProcedureDatabase
@@ -162,7 +176,9 @@ window.BoardWorldModel = {
     createRecursiveProcedureModel,
     getWrittenDataflowBlocks,
     createCubeEdgesFromDataflow,
+    createCubeEdgesFromDataflowWrapper,
     CubeDatabase,
+    loadCubeGraphWrapper,
     openCubeDatabase,
     ProcedureDatabase,
     openProcedureDatabase,
