@@ -233,8 +233,9 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
   graphOutput.textContent = "Loading graph...";
   try {
     const db = openCubeDatabase();
-    const [cubes, graph] = await Promise.all([
+    const [cubes, cubeEdges, graph] = await Promise.all([
       db.cubes.toArray(),
+      db.cubeEdges.toArray(),
       window.BoardWorldModel.loadCubeGraphWrapper(),
     ]);
     if (requestId !== graphRequestId) return;
@@ -328,9 +329,26 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
         },
       };
     });
+    const cubeEdgesById = new Map(cubeEdges.map(edge => [
+      `${cubeNodeId(edge.fromModelId, edge.fromCubeId)}->${cubeNodeId(edge.toModelId, edge.toCubeId)}`,
+      edge,
+    ]));
     const edges = [...visibleIds].flatMap(from => graph.children(from)
       .filter(to => visibleIds.has(to))
-      .map(to => ({ id: `${from}->${to}`, from, to, arrows: "to" })));
+      .map(to => {
+        const edgeId = `${from}->${to}`;
+        const edge = cubeEdgesById.get(edgeId);
+        const procedures = edge?.procedures ?? [];
+        return {
+          id: edgeId,
+          from,
+          to,
+          arrows: "to",
+          title: procedures.length > 0
+            ? procedures.map(procedure => `${procedure.description || "Unnamed procedure"} (${procedure.id})`).join("\n")
+            : "No procedure provenance recorded",
+        };
+      }));
 
     graphOutput.replaceChildren();
     const network = new vis.Network(
@@ -338,6 +356,7 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) },
       {
         interaction: { hover: true, navigationButtons: true, keyboard: true, dragNodes: true },
+        layout: { randomSeed: 42 },
         physics: {
           enabled: true,
           stabilization: { iterations: 300 },
@@ -369,6 +388,14 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       const [nodeId] = nodes;
       const cube = cubesById.get(nodeId);
       if (cube) selectGraphCube(cube);
+    });
+    network.on("click", ({ edges: selectedEdges }) => {
+      const [edgeId] = selectedEdges;
+      if (!edgeId) return;
+      const edge = cubeEdgesById.get(edgeId);
+      if (!edge) return;
+      detailsHeading.textContent = `Dataflow edge: ${edge.id}`;
+      detailsOutput.textContent = JSON.stringify(edge, null, 2);
     });
     cubeGraphNetwork = network;
   } catch (error) {

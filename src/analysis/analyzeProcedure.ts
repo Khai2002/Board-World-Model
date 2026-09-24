@@ -1,7 +1,7 @@
 import ProcedureDatabase, { type ProcedureRecord } from "../procedure/ProcedureDatabase";
 import Procedure from "../procedure/Procedure";
 import DataflowStep from "../procedure/step/DataflowStep";
-import CubeDatabase, { type CubeEdge } from "../cube/CubeDatabase";
+import CubeDatabase, { type CubeEdge, type CubeEdgeProcedure } from "../cube/CubeDatabase";
 
 
 export async function createCubeEdgesFromDataflow(
@@ -20,9 +20,14 @@ export async function createCubeEdgesFromDataflow(
   }
 
   const procedure: Procedure = Procedure.fromJSON(procedureJSON);
+  const procedureReference: CubeEdgeProcedure = {
+    id: procedureId,
+    description: procedure.description,
+  };
   const dataflows = await Promise.all(procedure.getStepsByType(DataflowStep)
     .map(async dStep => ({
       database: defaultDatabase,
+      procedure: procedureReference,
       target: dStep.targetLetter,
       sources: extractVariables(dStep.expression),
       blocks: await Promise.all(dStep.layouts
@@ -64,12 +69,22 @@ export async function createCubeEdgesFromDataflow(
         fromCubeId: sourceBlock.idx,
         toModelId: defaultDatabase,
         toCubeId: targetBlock.idx,
+        procedures: [dataflow.procedure],
       });
     }
   }
 
   if (edges.length > 0) {
-    await cDb.cubeEdges.bulkPut(edges);
+    const existingEdges = await cDb.cubeEdges.bulkGet(edges.map(edge => edge.id));
+    const mergedEdges = edges.map((edge, index) => {
+      const existing = existingEdges[index];
+      const procedures = new Map(
+        [...(existing?.procedures ?? []), ...(edge.procedures ?? [])]
+          .map(procedure => [procedure.id, procedure]),
+      );
+      return { ...edge, procedures: [...procedures.values()] };
+    });
+    await cDb.cubeEdges.bulkPut(mergedEdges);
   }
 
   return edges.length;
