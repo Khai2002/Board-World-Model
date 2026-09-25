@@ -41,7 +41,7 @@ copyDetailsButton.textContent = "Copy JSON";
 copyDetailsButton.style.marginBottom = "8px";
 const detailsOutput = document.createElement("pre");
 const graphHeading = document.createElement("h2");
-graphHeading.textContent = "Cube graph";
+graphHeading.textContent = "Graph";
 graphHeading.hidden = true;
 const graphDirectionSelect = document.createElement("select");
 graphDirectionSelect.setAttribute("aria-label", "Graph connections");
@@ -56,7 +56,7 @@ graphDepthSelect.setAttribute("aria-label", "Graph depth");
 graphDepthSelect.appendChild(new Option("All levels", "all"));
 graphDepthSelect.hidden = true;
 const graphFocusSelect = document.createElement("select");
-graphFocusSelect.setAttribute("aria-label", "Focus cube");
+graphFocusSelect.setAttribute("aria-label", "Focus node");
 graphFocusSelect.hidden = true;
 const clearGraphFocusButton = document.createElement("button");
 clearGraphFocusButton.type = "button";
@@ -84,6 +84,7 @@ document.body.appendChild(detailsPanel);
 let cubeGraphNetwork;
 let graphRequestId = 0;
 let currentGraphCube;
+let currentGraphProcedure;
 let currentGraphFocusId;
 const graphGroupColors = [
   { background: "#dbeafe", border: "#2563eb" },
@@ -150,15 +151,17 @@ function showDetails(title, data, viewState) {
   const requestId = ++graphRequestId;
   detailsHeading.textContent = title;
   detailsOutput.textContent = JSON.stringify(data, null, 2);
-  graphHeading.hidden = !data.cube;
-  graphDirectionSelect.hidden = !data.cube;
-  graphDepthSelect.hidden = !data.cube;
-  graphFocusSelect.hidden = !data.cube;
-  clearGraphFocusButton.hidden = !data.cube;
+  const graphData = data.cube || data.procedure;
+  graphHeading.hidden = !graphData;
+  graphDirectionSelect.hidden = !graphData;
+  graphDepthSelect.hidden = !graphData;
+  graphFocusSelect.hidden = !graphData;
+  clearGraphFocusButton.hidden = !graphData;
   graphDepthSelect.value = "all";
   currentGraphFocusId = undefined;
   graphOutput.hidden = !data.cube;
   currentGraphCube = data.cube;
+  currentGraphProcedure = data.procedure;
   if (cubeGraphNetwork) {
     cubeGraphNetwork.destroy();
     cubeGraphNetwork = undefined;
@@ -173,25 +176,31 @@ function showDetails(title, data, viewState) {
   cubesPanel.hidden = true;
   proceduresPanel.hidden = true;
   detailsPanel.hidden = false;
+  graphOutput.hidden = !graphData;
   if (data.cube) renderCubeGraph(data.cube, requestId, viewState);
+  if (data.procedure) renderProcedureGraph(data.procedure, requestId, viewState);
 }
 
 graphDirectionSelect.addEventListener("change", () => {
   if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+  if (currentGraphProcedure) renderProcedureGraph(currentGraphProcedure, ++graphRequestId);
 });
 
 graphDepthSelect.addEventListener("change", () => {
   if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+  if (currentGraphProcedure) renderProcedureGraph(currentGraphProcedure, ++graphRequestId);
 });
 
 graphFocusSelect.addEventListener("change", () => {
   currentGraphFocusId = graphFocusSelect.value || undefined;
   if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+  if (currentGraphProcedure) renderProcedureGraph(currentGraphProcedure, ++graphRequestId);
 });
 
 clearGraphFocusButton.addEventListener("click", () => {
   currentGraphFocusId = undefined;
   if (currentGraphCube) renderCubeGraph(currentGraphCube, ++graphRequestId);
+  if (currentGraphProcedure) renderProcedureGraph(currentGraphProcedure, ++graphRequestId);
 });
 
 function cubeNodeId(modelId, cubeId) {
@@ -212,6 +221,21 @@ async function selectGraphCube(cube) {
     (edge.toModelId === cube.modelId && edge.toCubeId === cube.cubeId)
   );
   showDetails(`Cube: ${cube.name || "Unnamed cube"}`, { cube, relatedEdges }, viewState);
+}
+
+async function selectGraphProcedure(procedure) {
+  const viewState = cubeGraphNetwork
+    ? { scale: cubeGraphNetwork.getScale() }
+    : undefined;
+  const procedureEdges = await openProcedureDatabase().procedureEdges.toArray();
+  const relatedEdges = procedureEdges.filter(edge =>
+    (edge.fromDefaultDatabase === procedure.defaultDatabase && edge.fromName === procedure.name) ||
+    (edge.toDefaultDatabase === procedure.defaultDatabase && edge.toName === procedure.name)
+  );
+  showDetails(`Procedure: ${procedure.description || "Unnamed procedure"}`, {
+    procedure,
+    relatedEdges,
+  }, viewState);
 }
 
 function cubeAssignedGroup(cube) {
@@ -378,6 +402,134 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
   }
 }
 
+function procedureNodeId(defaultDatabase, name) {
+  return `${defaultDatabase}:${name}`;
+}
+
+function procedureLabel(procedure) {
+  return `${procedure.description || "Unnamed procedure"}\n(${procedure.defaultDatabase}:${procedure.name})`;
+}
+
+async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
+  graphOutput.textContent = "Loading graph...";
+  try {
+    const db = openProcedureDatabase();
+    const [procedures, graph] = await Promise.all([
+      db.procedures.toArray(),
+      window.BoardWorldModel.loadProcedureGraphWrapper(),
+    ]);
+    if (requestId !== graphRequestId) return;
+
+    const proceduresById = new Map(procedures.map(procedure => [procedureNodeId(procedure.defaultDatabase, procedure.name), procedure]));
+    const selectedId = procedureNodeId(selectedProcedure.defaultDatabase, selectedProcedure.name);
+    const levels = new Map([[selectedId, 0]]);
+    const queue = [selectedId];
+    while (queue.length) {
+      const currentId = queue.shift();
+      const neighbors = graphDirectionSelect.value === "incoming"
+        ? graph.predecessors(currentId)
+        : graphDirectionSelect.value === "outgoing"
+          ? graph.children(currentId)
+          : [...graph.children(currentId), ...graph.predecessors(currentId)];
+      for (const neighborId of neighbors) {
+        if (!levels.has(neighborId)) {
+          levels.set(neighborId, levels.get(currentId) + 1);
+          queue.push(neighborId);
+        }
+      }
+    }
+
+    const maxLevel = Math.max(...levels.values());
+    const previousDepth = graphDepthSelect.value;
+    graphDepthSelect.replaceChildren(new Option("All levels", "all"));
+    for (let level = 1; level <= maxLevel; level += 1) {
+      graphDepthSelect.appendChild(new Option(`Depth ${level}`, String(level)));
+    }
+    graphDepthSelect.value = previousDepth && previousDepth !== "all" && Number(previousDepth) <= maxLevel
+      ? previousDepth
+      : "all";
+
+    const selectedDepth = graphDepthSelect.value === "all" ? Infinity : Number(graphDepthSelect.value);
+    const connectedIds = new Set([...levels.entries()]
+      .filter(([, level]) => level <= selectedDepth)
+      .map(([nodeId]) => nodeId));
+    if (currentGraphFocusId === selectedId || !connectedIds.has(currentGraphFocusId)) currentGraphFocusId = undefined;
+
+    const focusOptions = [...connectedIds]
+      .filter(id => id !== selectedId)
+      .map(id => proceduresById.get(id))
+      .filter(Boolean)
+      .sort((left, right) => procedureLabel(left).localeCompare(procedureLabel(right)));
+    graphFocusSelect.replaceChildren(new Option("Focus on a procedure", ""), ...focusOptions.map(procedure =>
+      new Option(procedureLabel(procedure).replace("\n", " "), procedureNodeId(procedure.defaultDatabase, procedure.name))
+    ));
+    graphFocusSelect.value = currentGraphFocusId || "";
+
+    const visibleIds = new Set(connectedIds);
+    if (currentGraphFocusId) {
+      const focusPath = graphDirectionSelect.value === "incoming"
+        ? graph.findPath(currentGraphFocusId, selectedId)
+        : graphDirectionSelect.value === "outgoing"
+          ? graph.findPath(selectedId, currentGraphFocusId)
+          : graph.findPath(selectedId, currentGraphFocusId) || graph.findPath(currentGraphFocusId, selectedId);
+      for (const nodeId of focusPath || []) visibleIds.add(nodeId);
+      for (const nodeId of [...connectedIds]) {
+        if (!focusPath?.includes(nodeId) && nodeId !== selectedId && nodeId !== currentGraphFocusId) visibleIds.delete(nodeId);
+      }
+    }
+
+    const nodes = [...visibleIds].map(id => {
+      const procedure = proceduresById.get(id);
+      return {
+        id,
+        label: procedure ? procedureLabel(procedure) : id,
+        title: procedure ? JSON.stringify(procedure, null, 2) : id,
+        level: levels.get(id) ?? 0,
+        shape: id === selectedId ? "ellipse" : "box",
+        size: id === selectedId ? 28 : undefined,
+        borderWidth: id === selectedId ? 3 : 1,
+        color: {
+          background: "#dcfce7",
+          border: id === selectedId ? "#202124" : "#16a34a",
+          hover: { background: "#dcfce7", border: "#202124" },
+          highlight: { background: "#dcfce7", border: "#202124" },
+        },
+      };
+    });
+    const edges = [...visibleIds].flatMap(from => graph.children(from)
+      .filter(to => visibleIds.has(to))
+      .map(to => ({ id: `${from}->${to}`, from, to, arrows: "to" })));
+
+    graphOutput.replaceChildren();
+    const network = new vis.Network(graphOutput, {
+      nodes: new vis.DataSet(nodes),
+      edges: new vis.DataSet(edges),
+    }, {
+      interaction: { hover: true, navigationButtons: true, keyboard: true, dragNodes: true },
+      physics: {
+        enabled: true,
+        stabilization: { iterations: 300 },
+        solver: "barnesHut",
+        barnesHut: { gravitationalConstant: -3000, centralGravity: 0.15, springLength: 180, springConstant: 0.04, damping: 0.09, avoidOverlap: 1 },
+      },
+      nodes: { shape: "box", margin: 12, font: { multi: "html", size: 14 } },
+      edges: { color: "#5f6368", smooth: { type: "cubicBezier", forceDirection: "horizontal", roundness: 0.4 } },
+    });
+    network.once("stabilizationIterationsDone", () => {
+      network.setOptions({ physics: { enabled: false } });
+      if (viewState?.scale) network.moveTo({ position: network.getPosition(selectedId), scale: viewState.scale, animation: false });
+    });
+    network.on("doubleClick", ({ nodes }) => {
+      const [nodeId] = nodes;
+      const procedure = proceduresById.get(nodeId);
+      if (procedure) selectGraphProcedure(procedure);
+    });
+    cubeGraphNetwork = network;
+  } catch (error) {
+    if (requestId === graphRequestId) graphOutput.textContent = `Could not render procedure graph: ${error.message}`;
+  }
+}
+
 function makeClickableItem(item, onOpen) {
   item.tabIndex = 0;
   item.setAttribute("role", "button");
@@ -484,9 +636,10 @@ async function loadCubes() {
 async function loadProcedures() {
   try {
     const db = openProcedureDatabase();
-    const [metadata, details] = await Promise.all([
+    const [metadata, details, procedureEdges] = await Promise.all([
       db.procedureMetadata.toArray(),
       db.procedures.toArray(),
+      db.procedureEdges.toArray(),
     ]);
     const detailIds = new Set(details.map(procedure => procedure.id));
 
@@ -514,7 +667,15 @@ async function loadProcedures() {
       const detail = details.find(candidate => candidate.id === procedure.id);
       makeClickableItem(item, () => showDetails(
         `Procedure: ${procedure.description || "Unnamed procedure"}`,
-        { metadata: procedure, details: detail ?? null },
+        {
+          metadata: procedure,
+          details: detail ?? null,
+          procedure: detail ?? procedure,
+          relatedEdges: procedureEdges.filter(edge =>
+            (edge.fromDefaultDatabase === procedure.defaultDatabase && edge.fromName === procedure.name) ||
+            (edge.toDefaultDatabase === procedure.defaultDatabase && edge.toName === procedure.name)
+          ),
+        },
       ));
       proceduresList.appendChild(item);
     }

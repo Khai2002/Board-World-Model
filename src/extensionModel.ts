@@ -7,6 +7,8 @@ import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
 import { createCubeEdgesFromDataflow } from "./analysis/analyzeProcedure"
 import { loadCubeGraph } from "./graph/cubeGraph"
+import { createProcedureEdgesFromCallProcedure } from "./analysis/createProcedureEdges"
+import { loadProcedureGraph } from "./graph/procedureGraph"
 
 type ProcedureModel = {
     procedure: Procedure
@@ -62,11 +64,22 @@ export function loadCubeGraphWrapper() {
     return loadCubeGraph(new CubeDatabase())
 }
 
+export function loadProcedureGraphWrapper() {
+    return loadProcedureGraph(new ProcedureDatabase())
+}
+
 export async function createCubeEdgesFromDataflowWrapper(
     name: string,
     defaultDatabase: string,
 ): Promise<number> {
     return createCubeEdgesFromDataflow(name, defaultDatabase)
+}
+
+export async function createProcedureEdgesFromCallProcedureWrapper(
+    name: string,
+    defaultDatabase: string,
+): Promise<number> {
+    return createProcedureEdgesFromCallProcedure(name, defaultDatabase)
 }
 
 function asProcedureJSON(data: unknown): ProcedureJSON {
@@ -161,8 +174,10 @@ declare global {
             getWrittenDataflowBlocks: typeof getWrittenDataflowBlocks
             createCubeEdgesFromDataflow: typeof createCubeEdgesFromDataflow
             createCubeEdgesFromDataflowWrapper: typeof createCubeEdgesFromDataflowWrapper
+            createProcedureEdgesFromCallProcedureWrapper: typeof createProcedureEdgesFromCallProcedureWrapper
             CubeDatabase: typeof CubeDatabase
             loadCubeGraphWrapper: typeof loadCubeGraphWrapper
+            loadProcedureGraphWrapper: typeof loadProcedureGraphWrapper
             openCubeDatabase: typeof openCubeDatabase
             ProcedureDatabase: typeof ProcedureDatabase
             openProcedureDatabase: typeof openProcedureDatabase
@@ -177,8 +192,10 @@ window.BoardWorldModel = {
     getWrittenDataflowBlocks,
     createCubeEdgesFromDataflow,
     createCubeEdgesFromDataflowWrapper,
+    createProcedureEdgesFromCallProcedureWrapper,
     CubeDatabase,
     loadCubeGraphWrapper,
+    loadProcedureGraphWrapper,
     openCubeDatabase,
     ProcedureDatabase,
     openProcedureDatabase,

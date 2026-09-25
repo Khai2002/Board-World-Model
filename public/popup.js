@@ -209,8 +209,15 @@ async function saveProcedures() {
       );
     }
 
-    const edgeCount = await Promise.all(detailRows.map((procedure) =>
+    const cubeEdgeCount = await Promise.all(detailRows.map((procedure) =>
       window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
+        procedure.name,
+        procedure.defaultDatabase,
+      )
+    )).then((counts) => counts.reduce((total, count) => total + count, 0));
+
+    const procedureEdgeCount = await Promise.all(detailRows.map((procedure) =>
+      window.BoardWorldModel.createProcedureEdgesFromCallProcedureWrapper(
         procedure.name,
         procedure.defaultDatabase,
       )
@@ -219,7 +226,7 @@ async function saveProcedures() {
     modelLine.textContent = `${modelId} · ${metadataRows.length} procedures stored`;
     output.className = "";
     output.textContent = JSON.stringify(metadataRows, null, 2);
-    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records, ${edgeCount} cube edges`;
+    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records, ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges`;
   } catch (error) {
     renderError(error.message);
   }
