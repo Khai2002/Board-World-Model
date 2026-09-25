@@ -10,12 +10,18 @@ export type CubeNode = {
 }
 
 /** A directed dataflow edge row stored in the graph table. */
+export type CubeEdgeProcedure = {
+    id: string
+    description: string
+}
+
 export type CubeEdge = {
     id: string
     fromModelId: string
     fromCubeId: string | number
     toModelId: string
     toCubeId: string | number
+    procedures?: CubeEdgeProcedure[]
 }
 
 /** Persistent storage for cubes and their directed dataflow relationships. */
