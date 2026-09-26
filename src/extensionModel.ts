@@ -1,23 +1,20 @@
 import Procedure from "./procedure/Procedure"
 import CallProcedureStep from "./procedure/step/CallProcedureStep"
 import type { DataflowBlock } from "./procedure/step/DataflowStep"
-import type { ProcedureJSON } from "./utils/json"
+import type { ProcedureIdentifier, ProcedureJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./cube/CubeDatabase"
 import ProcedureDatabase from "./procedure/ProcedureDatabase"
-import { createCubeEdgesFromDataflow } from "./analysis/analyzeProcedure"
+import { createCubeEdgesFromDataflow, testCubeEdges } from "./analysis/createCubeEdges"
 import { loadCubeGraph } from "./graph/cubeGraph"
 import { createProcedureEdgesFromCallProcedure } from "./analysis/createProcedureEdges"
 import { loadProcedureGraph } from "./graph/procedureGraph"
 
+export type { ProcedureIdentifier } from "./utils/json"
+
 type ProcedureModel = {
     procedure: Procedure
     proceduresToExecute: Procedure[]
-}
-
-export type ProcedureIdentifier = {
-    name: string
-    defaultDatabase: string
 }
 
 export type ProcedureLoader = (
@@ -163,7 +160,7 @@ function procedureKey(procedure: Procedure): string {
 }
 
 export function printTest(): void {
-    createCubeEdgesFromDataflow("e91cf58b-260b-4a6c-a8c4-7ab837022505", "FIN");
+    testCubeEdges("24375523-e153-444a-b480-09aa8f5faf04", "FIN");
 }
 
 declare global {

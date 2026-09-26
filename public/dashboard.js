@@ -65,6 +65,15 @@ clearGraphFocusButton.hidden = true;
 const graphOutput = document.createElement("div");
 graphOutput.id = "cubeGraph";
 graphOutput.hidden = true;
+const graphContextMenu = document.createElement("div");
+graphContextMenu.className = "graph-context-menu";
+graphContextMenu.setAttribute("role", "menu");
+graphContextMenu.hidden = true;
+const focusGraphNodeButton = document.createElement("button");
+focusGraphNodeButton.type = "button";
+focusGraphNodeButton.setAttribute("role", "menuitem");
+focusGraphNodeButton.textContent = "Focus graph here";
+graphContextMenu.appendChild(focusGraphNodeButton);
 Object.assign(detailsOutput.style, {
   margin: "0",
   padding: "12px",
@@ -78,7 +87,7 @@ Object.assign(detailsOutput.style, {
   fontSize: "12px",
   lineHeight: "1.5",
 });
-detailsPanel.append(graphHeading, graphDirectionSelect, graphDepthSelect, graphFocusSelect, clearGraphFocusButton, graphOutput, detailsHeading, copyDetailsButton, detailsOutput);
+detailsPanel.append(graphHeading, graphDirectionSelect, graphDepthSelect, graphFocusSelect, clearGraphFocusButton, graphOutput, detailsHeading, copyDetailsButton, detailsOutput, graphContextMenu);
 document.body.appendChild(detailsPanel);
 
 let cubeGraphNetwork;
@@ -86,6 +95,7 @@ let graphRequestId = 0;
 let currentGraphCube;
 let currentGraphProcedure;
 let currentGraphFocusId;
+let focusGraphNode;
 const graphGroupColors = [
   { background: "#dbeafe", border: "#2563eb" },
   { background: "#dcfce7", border: "#16a34a" },
@@ -203,12 +213,41 @@ clearGraphFocusButton.addEventListener("click", () => {
   if (currentGraphProcedure) renderProcedureGraph(currentGraphProcedure, ++graphRequestId);
 });
 
+focusGraphNodeButton.addEventListener("click", () => {
+  graphContextMenu.hidden = true;
+  focusGraphNode?.();
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!graphContextMenu.contains(event.target)) graphContextMenu.hidden = true;
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") graphContextMenu.hidden = true;
+});
+
+function showGraphContextMenu(event, focusAction) {
+  event.preventDefault();
+  focusGraphNode = focusAction;
+  graphContextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 170)}px`;
+  graphContextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 44)}px`;
+  graphContextMenu.hidden = false;
+}
+
 function cubeNodeId(modelId, cubeId) {
   return `${modelId}:${cubeId}`;
 }
 
 function cubeLabel(cube) {
   return `${cube.name || "Unnamed cube"}\n(${cube.modelId}:${cube.cubeId})`;
+}
+
+function curveReciprocalEdges(edges) {
+  const edgeIds = new Set(edges.map(edge => `${edge.from}->${edge.to}`));
+  return edges.map(edge => edgeIds.has(`${edge.to}->${edge.from}`)
+    ? { ...edge, smooth: { type: "curvedCW", roundness: 0.2 } }
+    : edge,
+  );
 }
 
 async function selectGraphCube(cube) {
@@ -357,7 +396,7 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       `${cubeNodeId(edge.fromModelId, edge.fromCubeId)}->${cubeNodeId(edge.toModelId, edge.toCubeId)}`,
       edge,
     ]));
-    const edges = [...visibleIds].flatMap(from => graph.children(from)
+    const edges = curveReciprocalEdges([...visibleIds].flatMap(from => graph.children(from)
       .filter(to => visibleIds.has(to))
       .map(to => {
         const edgeId = `${from}->${to}`;
@@ -372,7 +411,7 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
             ? procedures.map(procedure => `${procedure.description || "Unnamed procedure"} (${procedure.id})`).join("\n")
             : "No procedure provenance recorded",
         };
-      }));
+      })));
 
     graphOutput.replaceChildren();
     const network = new vis.Network(
@@ -412,6 +451,15 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       const [nodeId] = nodes;
       const cube = cubesById.get(nodeId);
       if (cube) selectGraphCube(cube);
+    });
+    network.on("oncontext", ({ event, pointer }) => {
+      const nodeId = network.getNodeAt(pointer.DOM);
+      const cube = cubesById.get(nodeId);
+      if (!cube) return;
+      showGraphContextMenu(event, () => {
+        graphFocusSelect.value = nodeId;
+        graphFocusSelect.dispatchEvent(new Event("change"));
+      });
     });
     network.on("click", ({ edges: selectedEdges }) => {
       const [edgeId] = selectedEdges;
@@ -523,15 +571,16 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
         },
       };
     });
-    const edges = [...visibleIds].flatMap(from => graph.children(from)
+    const edges = curveReciprocalEdges([...visibleIds].flatMap(from => graph.children(from)
       .filter(to => visibleIds.has(to))
-      .map(to => ({ id: `${from}->${to}`, from, to, arrows: "to" })));
+      .map(to => ({ id: `${from}->${to}`, from, to, arrows: "to" }))));
 
     graphOutput.replaceChildren();
     const network = new vis.Network(graphOutput, {
       nodes: new vis.DataSet(nodes),
       edges: new vis.DataSet(edges),
     }, {
+      layout: { randomSeed: 42 },
       interaction: { hover: true, navigationButtons: true, keyboard: true, dragNodes: true },
       physics: {
         enabled: true,
@@ -550,6 +599,15 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
       const [nodeId] = nodes;
       const procedure = proceduresById.get(nodeId);
       if (procedure) selectGraphProcedure(procedure);
+    });
+    network.on("oncontext", ({ event, pointer }) => {
+      const nodeId = network.getNodeAt(pointer.DOM);
+      const procedure = proceduresById.get(nodeId);
+      if (!procedure) return;
+      showGraphContextMenu(event, () => {
+        graphFocusSelect.value = nodeId;
+        graphFocusSelect.dispatchEvent(new Event("change"));
+      });
     });
     cubeGraphNetwork = network;
   } catch (error) {
@@ -792,6 +850,9 @@ async function deleteAllData() {
 
 exportButton.addEventListener("click", exportData);
 importButton.addEventListener("click", () => importInput.click());
+document.getElementById("printTestButton").addEventListener("click", () => {
+  window.BoardWorldModel.printTest();
+});
 importInput.addEventListener("change", () => {
   const [file] = importInput.files;
   if (file) importData(file);

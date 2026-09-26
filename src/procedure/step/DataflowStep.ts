@@ -48,6 +48,7 @@ export type DataflowBlock = {
     cubeIdx: number;
     value: string;
     letter: string;
+    virtualCubeId?: string;
 
 }
 

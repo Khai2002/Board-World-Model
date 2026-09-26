@@ -21,6 +21,9 @@
     .storage-size { margin: 12px 0; color: #5f6368; }
     .search { width: min(100%, 420px); padding: 7px 8px; font: inherit; }
     #cubeGraph { width: 100%; height: min(80vh, 900px); min-height: 650px; border: 1px solid #dadce0; border-radius: 4px; margin-top: 16px; }
+    .graph-context-menu { position: fixed; z-index: 10; min-width: 160px; padding: 4px; background: #fff; border: 1px solid #dadce0; border-radius: 4px; box-shadow: 0 2px 8px #0003; }
+    .graph-context-menu button { width: 100%; border: 0; background: transparent; text-align: left; }
+    .graph-context-menu button:hover, .graph-context-menu button:focus { background: #f1f3f4; }
     #deleteAllButton { margin-left: auto; }
     @media (max-width: 560px) {
       .dashboard-header { align-items: flex-start; flex-wrap: wrap; }
@@ -42,6 +45,7 @@
     <div class="actions">
       <button id="exportButton" type="button">Export JSON</button>
       <button id="importButton" type="button">Import JSON</button>
+      <button id="printTestButton" type="button">Test print</button>
       <input id="importInput" type="file" accept="application/json,.json" hidden>
       <select id="modelSelect" aria-label="Model to delete">
         <option value="">Select a model</option>

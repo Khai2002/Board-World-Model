@@ -1,5 +1,9 @@
-import type { ProcedureIdentifier } from "../procedure/ProcedureRegistry"
 import type { DataflowLayout } from "../procedure/step/DataflowStep"
+
+export type ProcedureIdentifier = {
+  name: string
+  defaultDatabase: string
+}
 
 export type StepJSON = {
     discriminator: string

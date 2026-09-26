@@ -1,6 +1,5 @@
 import type Step from "../StepFactory";
-import type { ProcedureIdentifier, ProcedureEntry, ProcedureRegistry } from "../ProcedureRegistry";
-import Procedure from "../Procedure";
+import type { ProcedureIdentifier } from "../../utils/json";
 
 export default class CallProcedureStep implements Step {
     discriminator: string;
@@ -23,17 +22,4 @@ export default class CallProcedureStep implements Step {
         this.procedureToExecute = procedureToExecute
     }    
 
-    getProcedureToExecute(registry: ProcedureRegistry): ProcedureEntry {
-        const procedure = registry.get(this.procedureToExecute)
-        if(!procedure) throw new Error(`Procedure ${this.procedureToExecute.name} does not exist in ${this.procedureToExecute.defaultDatabase} database`)
-        return procedure
-    }
-
-    getFullProcedure(registry: ProcedureRegistry): Procedure {
-        const procedure = this.getProcedureToExecute(registry)
-        if (procedure.kind === "placeholder") {
-            throw new Error(`Procedure ${procedure.name} has not been loaded`)
-        }
-        return procedure
-    }
 }

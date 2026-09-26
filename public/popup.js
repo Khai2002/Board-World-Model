@@ -7,6 +7,7 @@ const modelLine = document.getElementById("modelLine");
 document.getElementById("btnConnection").addEventListener("click", checkConnection);
 document.getElementById("btnCubes").addEventListener("click", saveCubes);
 document.getElementById("btnProcedures").addEventListener("click", saveProcedures);
+document.getElementById("btnEdges").addEventListener("click", createAllEdges);
 document.getElementById("btnDashboard").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 });
@@ -209,24 +210,47 @@ async function saveProcedures() {
       );
     }
 
-    const cubeEdgeCount = await Promise.all(detailRows.map((procedure) =>
-      window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
-        procedure.name,
-        procedure.defaultDatabase,
-      )
-    )).then((counts) => counts.reduce((total, count) => total + count, 0));
-
-    const procedureEdgeCount = await Promise.all(detailRows.map((procedure) =>
-      window.BoardWorldModel.createProcedureEdgesFromCallProcedureWrapper(
-        procedure.name,
-        procedure.defaultDatabase,
-      )
-    )).then((counts) => counts.reduce((total, count) => total + count, 0));
-
     modelLine.textContent = `${modelId} · ${metadataRows.length} procedures stored`;
     output.className = "";
     output.textContent = JSON.stringify(metadataRows, null, 2);
-    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records, ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges`;
+    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records`;
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
+async function createAllEdges() {
+  try {
+    const modelId = await getModelId();
+    const procedureDb = window.BoardWorldModel.openProcedureDatabase();
+    const procedures = (await procedureDb.procedures.toArray()).filter(
+      (procedure) => procedure.defaultDatabase === modelId,
+    );
+    if (procedures.length === 0) {
+      throw new Error("No saved procedures found for this data model. Save procedures first.");
+    }
+
+    const cubeDb = window.BoardWorldModel.openCubeDatabase();
+    await cubeDb.cubeEdges.where("fromModelId").equals(modelId).delete();
+    await procedureDb.procedureEdges.where("fromDefaultDatabase").equals(modelId).delete();
+
+    let cubeEdgeCount = 0;
+    let procedureEdgeCount = 0;
+    for (const procedure of procedures) {
+      cubeEdgeCount += await window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
+        procedure.name,
+        procedure.defaultDatabase,
+      );
+      procedureEdgeCount += await window.BoardWorldModel.createProcedureEdgesFromCallProcedureWrapper(
+        procedure.name,
+        procedure.defaultDatabase,
+      );
+    }
+
+    modelLine.textContent = `${modelId} · ${procedures.length} procedures`;
+    output.className = "";
+    output.textContent = `Created ${cubeEdgeCount} cube edges and ${procedureEdgeCount} procedure edges.`;
+    meta.textContent = "Edges rebuilt from saved procedure details";
   } catch (error) {
     renderError(error.message);
   }
