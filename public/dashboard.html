@@ -3,33 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Board World Model Dashboard</title>
-  <style>
-    body { margin: 32px; color: #202124; font: 14px system-ui, sans-serif; }
-    .dashboard-header { display: flex; align-items: center; gap: 12px; min-height: 32px; }
-    h1 { margin: 0; font-size: 20px; }
-    #status { color: #5f6368; }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
-    button, select { padding: 6px 8px; font: inherit; }
-    button { cursor: pointer; }
-    .danger { color: #a50e0e; }
-    .tabs { display: flex; gap: 4px; margin: 16px 0; border-bottom: 1px solid #dadce0; }
-    .tab { border: 0; border-bottom: 2px solid transparent; background: transparent; }
-    .tab.active { border-bottom-color: #174ea6; color: #174ea6; }
-    .tab-panel[hidden] { display: none; }
-    li { margin: 8px 0; }
-    code { color: #174ea6; }
-    .storage-size { margin: 12px 0; color: #5f6368; }
-    .search { width: min(100%, 420px); padding: 7px 8px; font: inherit; }
-    #cubeGraph { width: 100%; height: min(80vh, 900px); min-height: 650px; border: 1px solid #dadce0; border-radius: 4px; margin-top: 16px; }
-    .graph-context-menu { position: fixed; z-index: 10; min-width: 160px; padding: 4px; background: #fff; border: 1px solid #dadce0; border-radius: 4px; box-shadow: 0 2px 8px #0003; }
-    .graph-context-menu button { width: 100%; border: 0; background: transparent; text-align: left; }
-    .graph-context-menu button:hover, .graph-context-menu button:focus { background: #f1f3f4; }
-    #deleteAllButton { margin-left: auto; }
-    @media (max-width: 560px) {
-      .dashboard-header { align-items: flex-start; flex-wrap: wrap; }
-      #deleteAllButton { margin-left: 0; }
-    }
-  </style>
+  <link rel="stylesheet" href="dashboard.css" />
 </head>
 <body>
   <div class="dashboard-header">

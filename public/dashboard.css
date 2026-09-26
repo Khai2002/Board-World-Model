@@ -1,0 +1,174 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #202124;
+  background: #f7f8fa;
+}
+
+body {
+  margin: 32px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.3;
+}
+
+#status {
+  margin: 10px 0 18px;
+  color: #5f6368;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+button,
+select,
+.search {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #c8cdd3;
+  border-radius: 5px;
+  background: #fff;
+  color: #202124;
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+button:hover {
+  border-color: #9aa4af;
+  background: #f1f4f6;
+}
+
+button:focus-visible,
+select:focus-visible,
+.search:focus-visible {
+  outline: 2px solid #28766e;
+  outline-offset: 2px;
+}
+
+.danger {
+  border-color: #e2b9b9;
+  color: #a50e0e;
+}
+
+.danger:hover {
+  border-color: #c97b7b;
+  background: #fff5f5;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
+  border-bottom: 1px solid #d8dde2;
+}
+
+.tab {
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+}
+
+.tab:hover {
+  background: #edf1f3;
+}
+
+.tab.active {
+  border-bottom-color: #28766e;
+  color: #21635c;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+li {
+  margin: 8px 0;
+}
+
+code {
+  color: #21635c;
+}
+
+.storage-size {
+  margin: 12px 0;
+  color: #5f6368;
+}
+
+.search {
+  width: min(100%, 420px);
+}
+
+#cubeGraph {
+  width: 100%;
+  height: min(80vh, 900px);
+  min-height: 650px;
+  margin-top: 16px;
+  border: 1px solid #d8dde2;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.graph-context-menu {
+  position: fixed;
+  z-index: 10;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid #d8dde2;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 4px 14px #20212424;
+}
+
+.graph-context-menu button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.graph-context-menu button:hover,
+.graph-context-menu button:focus {
+  background: #edf1f3;
+}
+
+#deleteAllButton {
+  margin-left: auto;
+}
+
+@media (max-width: 560px) {
+  body {
+    margin: 20px 16px;
+  }
+
+  .dashboard-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  #deleteAllButton {
+    margin-left: 0;
+  }
+}
