@@ -1,5 +1,5 @@
 import DirectedGraph from "./DirectedGraph";
-import CubeDatabase from "../cube/CubeDatabase";
+import CubeDatabase from "../database/CubeDatabase";
 
 export async function loadCubeGraph(db: CubeDatabase, modelIds?: string[]): Promise<DirectedGraph<string>> {
     const graph = new DirectedGraph<string>();

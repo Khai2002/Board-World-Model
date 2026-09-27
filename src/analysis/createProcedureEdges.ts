@@ -1,5 +1,5 @@
 import Procedure from "../procedure/Procedure";
-import ProcedureDatabase, { type ProcedureEdge, type ProcedureRecord } from "../procedure/ProcedureDatabase";
+import ProcedureDatabase, { type ProcedureEdge, type ProcedureRecord } from "../database/ProcedureDatabase";
 import CallProcedureStep from "../procedure/step/CallProcedureStep";
 
 export async function createProcedureEdgesFromCallProcedure(

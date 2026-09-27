@@ -1,5 +1,5 @@
-import ProcedureDatabase from "./procedure/ProcedureDatabase"
-import CubeDatabase from "./cube/CubeDatabase"
+import ProcedureDatabase from "./database/ProcedureDatabase"
+import CubeDatabase from "./database/CubeDatabase"
 import type { ProcedureIdentifier } from "./extensionModel"
 
 type ProcedureMessage = {

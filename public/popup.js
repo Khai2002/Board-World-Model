@@ -5,9 +5,9 @@ const meta = document.getElementById("meta");
 const modelLine = document.getElementById("modelLine");
 
 document.getElementById("btnConnection").addEventListener("click", checkConnection);
-document.getElementById("btnCubes").addEventListener("click", saveCubes);
-document.getElementById("btnProcedures").addEventListener("click", saveProcedures);
-document.getElementById("btnEdges").addEventListener("click", createAllEdges);
+document.getElementById("btnCubes").addEventListener("click", () => withSelectedDatabase(saveCubes));
+document.getElementById("btnProcedures").addEventListener("click", () => withSelectedDatabase(saveProcedures));
+document.getElementById("btnEdges").addEventListener("click", () => withSelectedDatabase(createAllEdges));
 document.getElementById("btnDashboard").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 });
@@ -17,13 +17,6 @@ const PROCEDURE_BATCH_SIZE = 10;
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;
-}
-
-async function getModelId() {
-  const tab = await getActiveTab();
-  const match = tab?.url?.match(/\/data-models\/([^/]+)(?:\/|$)/);
-  if (!match) throw new Error("Open a Board data model page first.");
-  return decodeURIComponent(match[1]);
 }
 
 function sendToContentScript(message) {
@@ -42,6 +35,49 @@ function sendToContentScript(message) {
       }
       resolve(response);
     });
+  });
+}
+
+async function withSelectedDatabase(action) {
+  try {
+    const response = await sendToContentScript({
+      type: "CALL",
+      endpoint: "getDatabasesDefinitions",
+      params: {},
+    });
+    if (!response?.success) throw new Error(response?.error || "Could not get databases.");
+
+    const definitions = response.result.data;
+    if (!Array.isArray(definitions)) throw new Error("The database definitions response is not a list.");
+    const databases = definitions
+      .map((database) => database?.name)
+      .filter((name) => typeof name === "string" && name.length > 0);
+    if (databases.length === 0) throw new Error("No databases are available to scan.");
+
+    const databaseName = await chooseDatabase(databases);
+    if (databaseName) await action(databaseName);
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
+function chooseDatabase(databases) {
+  const dialog = document.getElementById("databaseDialog");
+  const select = document.getElementById("databaseSelect");
+  select.replaceChildren(...databases.map((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    return option;
+  }));
+
+  return new Promise((resolve) => {
+    const onClose = () => {
+      dialog.removeEventListener("close", onClose);
+      resolve(dialog.returnValue === "choose" ? select.value : null);
+    };
+    dialog.addEventListener("close", onClose);
+    dialog.showModal();
   });
 }
 
@@ -114,9 +150,8 @@ function normalizeProcedureDetails(data) {
   return data && typeof data === "object" ? [data] : [];
 }
 
-async function saveCubes() {
+async function saveCubes(modelId) {
   try {
-    const modelId = await getModelId();
     const response = await sendToContentScript({
       type: "CALL",
       endpoint: "getAllCubes",
@@ -146,9 +181,8 @@ async function saveCubes() {
   }
 }
 
-async function saveProcedures() {
+async function saveProcedures(modelId) {
   try {
-    const modelId = await getModelId();
     const metadataResponse = await sendToContentScript({
       type: "CALL",
       endpoint: "getCoreProcedures",
@@ -219,9 +253,8 @@ async function saveProcedures() {
   }
 }
 
-async function createAllEdges() {
+async function createAllEdges(modelId) {
   try {
-    const modelId = await getModelId();
     const procedureDb = window.BoardWorldModel.openProcedureDatabase();
     const procedures = (await procedureDb.procedures.toArray()).filter(
       (procedure) => procedure.defaultDatabase === modelId,

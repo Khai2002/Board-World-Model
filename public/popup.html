@@ -112,6 +112,38 @@
   button:active { transform: translateY(1px); }
   button:disabled { opacity: 0.4; cursor: default; }
 
+  dialog {
+    width: 320px;
+    padding: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font: inherit;
+  }
+  dialog::backdrop { background: rgb(0 0 0 / 65%); }
+  dialog form { padding: 12px; }
+  dialog h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  dialog select {
+    width: 100%;
+    padding: 7px 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font: inherit;
+  }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
   #output {
     margin: 0;
     padding: 10px 12px;
@@ -147,7 +179,7 @@
   <div id="statusLine">checking page…</div>
 
   <div class="section">
-    <div id="modelLine">detecting data model…</div>
+    <div id="modelLine">no database selected</div>
     <div class="btn-grid">
       <button class="full" id="btnConnection">refresh connection</button>
       <button class="full" id="btnCubes">get all cubes</button>
@@ -156,6 +188,18 @@
       <button class="full" id="btnDashboard">open dashboard</button>
     </div>
   </div>
+
+  <dialog id="databaseDialog" aria-labelledby="databaseDialogTitle">
+    <form method="dialog">
+      <h2 id="databaseDialogTitle">Choose a database</h2>
+      <label for="databaseSelect">Database</label>
+      <select id="databaseSelect" required></select>
+      <div class="dialog-actions">
+        <button value="cancel">cancel</button>
+        <button value="choose">scan</button>
+      </div>
+    </form>
+  </dialog>
 
   <pre id="output"></pre>
   <div id="meta"></div>

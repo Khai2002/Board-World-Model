@@ -1,7 +1,7 @@
-import ProcedureDatabase, { type ProcedureRecord } from "../procedure/ProcedureDatabase";
+import ProcedureDatabase, { type ProcedureRecord } from "../database/ProcedureDatabase";
 import Procedure from "../procedure/Procedure";
 import DataflowStep from "../procedure/step/DataflowStep";
-import CubeDatabase, { type CubeEdge, type CubeEdgeProcedure } from "../cube/CubeDatabase";
+import CubeDatabase, { type CubeEdge, type CubeEdgeProcedure } from "../database/CubeDatabase";
 
 
 export async function testCubeEdges(

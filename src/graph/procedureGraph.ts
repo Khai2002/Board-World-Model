@@ -1,5 +1,5 @@
 import DirectedGraph from "./DirectedGraph";
-import ProcedureDatabase, { type ProcedureRecord } from "../procedure/ProcedureDatabase";
+import ProcedureDatabase, { type ProcedureRecord } from "../database/ProcedureDatabase";
 
 export async function loadProcedureGraph(db: ProcedureDatabase, databases?: string[]): Promise<DirectedGraph<string>> {
     const graph = new DirectedGraph<string>();
