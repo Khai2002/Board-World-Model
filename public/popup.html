@@ -137,6 +137,34 @@
     color: var(--text);
     font: inherit;
   }
+  #capsuleDialog {
+    width: 350px;
+    max-height: 80vh;
+  }
+  #capsuleTree {
+    max-height: 48vh;
+    overflow: auto;
+    padding: 0 0 0 18px;
+    margin: 0;
+    list-style: none;
+  }
+  #capsuleTree ul {
+    padding-left: 18px;
+    list-style: none;
+  }
+  #capsuleTree label {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin: 5px 0;
+    color: var(--text);
+    text-transform: none;
+    font-size: 11px;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+  #capsuleTree input { margin: 1px 0 0; accent-color: var(--accent); }
+  #capsuleSelectionCount { color: var(--muted); margin-top: 8px; }
   .dialog-actions {
     display: flex;
     justify-content: flex-end;
@@ -182,6 +210,7 @@
     <div id="modelLine">no database selected</div>
     <div class="btn-grid">
       <button class="full" id="btnConnection">refresh connection</button>
+      <button class="full" id="btnCapsules">scan all capsules</button>
       <button class="full" id="btnCubes">get all cubes</button>
       <button class="full" id="btnProcedures">get all procedures</button>
       <button class="full" id="btnEdges">create all edges</button>
@@ -197,6 +226,18 @@
       <div class="dialog-actions">
         <button value="cancel">cancel</button>
         <button value="choose">scan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="capsuleDialog" aria-labelledby="capsuleDialogTitle">
+    <form method="dialog">
+      <h2 id="capsuleDialogTitle">Choose capsules</h2>
+      <ul id="capsuleTree"></ul>
+      <div id="capsuleSelectionCount"></div>
+      <div class="dialog-actions">
+        <button value="cancel">cancel</button>
+        <button value="choose">select</button>
       </div>
     </form>
   </dialog>

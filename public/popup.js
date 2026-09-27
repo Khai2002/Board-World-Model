@@ -5,6 +5,13 @@ const meta = document.getElementById("meta");
 const modelLine = document.getElementById("modelLine");
 
 document.getElementById("btnConnection").addEventListener("click", checkConnection);
+document.getElementById("btnCapsules").addEventListener("click", () =>
+  withSelectedCapsules((capsules) => {
+    output.className = "";
+    output.textContent = JSON.stringify(capsules, null, 2);
+    meta.textContent = `${capsules.length} capsules selected`;
+  })
+);
 document.getElementById("btnCubes").addEventListener("click", () => withSelectedDatabase(saveCubes));
 document.getElementById("btnProcedures").addEventListener("click", () => withSelectedDatabase(saveProcedures));
 document.getElementById("btnEdges").addEventListener("click", () => withSelectedDatabase(createAllEdges));
@@ -36,6 +43,120 @@ function sendToContentScript(message) {
       resolve(response);
     });
   });
+}
+
+async function withSelectedCapsules(action) {
+  try {
+    const response = await sendToContentScript({
+      type: "CALL",
+      endpoint: "getCapsules",
+      params: {},
+    });
+    if(!response?.success) throw new Error(response?.error || "Could not get capsules.");
+
+    const definitions = response.result.data?.items;
+    if (!Array.isArray(definitions)) throw new Error("The capsule response is not a list.");
+
+    const capsules = collectCapsules(definitions);
+    if (capsules.length === 0) throw new Error("No capsules are available to scan.");
+
+    const selectedCapsules = await chooseCapsules(definitions, capsules);
+    if (selectedCapsules) await action(selectedCapsules);
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
+function collectCapsules(nodes) {
+  return nodes.flatMap((node) => {
+    if (typeof node?.path !== "string") return [];
+    if (node.path.toLowerCase().endsWith(".bcps")) return [node];
+    return Array.isArray(node.items) ? collectCapsules(node.items) : [];
+  });
+}
+
+function chooseCapsules(tree, capsules) {
+  const dialog = document.getElementById("capsuleDialog");
+  const list = document.getElementById("capsuleTree");
+  const count = document.getElementById("capsuleSelectionCount");
+  const capsulesByPath = new Map(capsules.map((capsule) => [capsule.path, capsule]));
+  list.replaceChildren(...tree.map((node) => createCapsuleTreeNode(node, capsulesByPath)));
+
+  const updateSelection = () => {
+    const selected = list.querySelectorAll("input[data-capsule-path]:checked").length;
+    count.textContent = `${selected} of ${capsules.length} selected`;
+  };
+
+  const onChange = (event) => {
+    const checkbox = event.target;
+    if (!(checkbox instanceof HTMLInputElement)) return;
+
+    const item = checkbox.closest("li");
+    const children = item.querySelector(":scope > ul");
+    if (children) {
+      children.querySelectorAll("input[type=checkbox]").forEach((childCheckbox) => {
+        childCheckbox.checked = checkbox.checked;
+        childCheckbox.indeterminate = false;
+      });
+    }
+
+    let parentItem = item.parentElement.closest("li");
+    while (parentItem) {
+      const childList = parentItem.querySelector(":scope > ul");
+      const childCheckboxes = [...childList.children]
+        .map((child) => child.querySelector(":scope > label input"));
+      const parentCheckbox = parentItem.querySelector(":scope > label input");
+      const selectedCount = childCheckboxes.filter(
+        (childCheckbox) => childCheckbox.checked || childCheckbox.indeterminate,
+      ).length;
+      parentCheckbox.checked = selectedCount === childCheckboxes.length;
+      parentCheckbox.indeterminate = selectedCount > 0 && selectedCount < childCheckboxes.length;
+      parentItem = parentItem.parentElement.closest("li");
+    }
+
+    updateSelection();
+  };
+  list.addEventListener("change", onChange);
+
+  return new Promise((resolve) => {
+    const onClose = () => {
+      dialog.removeEventListener("close", onClose);
+      list.removeEventListener("change", onChange);
+      const selectedPaths = new Set(
+        [...list.querySelectorAll("input[data-capsule-path]:checked")]
+          .map((checkbox) => checkbox.dataset.capsulePath),
+      );
+      resolve(dialog.returnValue === "choose"
+        ? [...selectedPaths].map((path) => capsulesByPath.get(path))
+        : null);
+    };
+    dialog.addEventListener("close", onClose);
+    updateSelection();
+    dialog.showModal();
+  });
+}
+
+function createCapsuleTreeNode(node, capsulesByPath) {
+  const isCapsule = capsulesByPath.has(node.path);
+  const item = document.createElement("li");
+  const label = document.createElement("label");
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.disabled = !isCapsule && (!Array.isArray(node.items) || node.items.length === 0);
+  if (isCapsule) checkbox.dataset.capsulePath = node.path;
+
+  const name = document.createElement("span");
+  name.textContent = node.name || node.path;
+  label.append(checkbox, name);
+  item.append(label);
+
+  if (!isCapsule && Array.isArray(node.items) && node.items.length > 0) {
+    const children = document.createElement("ul");
+    children.append(...node.items.map((child) => createCapsuleTreeNode(child, capsulesByPath)));
+    item.append(children);
+  }
+
+  return item;
 }
 
 async function withSelectedDatabase(action) {
