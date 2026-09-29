@@ -5,6 +5,7 @@ import type { ProcedureIdentifier, ProcedureJSON } from "./utils/json"
 import DataflowStep from "./procedure/step/DataflowStep"
 import CubeDatabase from "./database/CubeDatabase"
 import ProcedureDatabase from "./database/ProcedureDatabase"
+import ScreenDatabase from "./database/ScreenDatabase"
 import { createCubeEdgesFromDataflow, testCubeEdges } from "./analysis/createCubeEdges"
 import { loadCubeGraph } from "./graph/cubeGraph"
 import { createProcedureEdgesFromCallProcedure } from "./analysis/createProcedureEdges"
@@ -63,6 +64,10 @@ export function openCubeDatabase(): CubeDatabase {
 
 export function openProcedureDatabase(): ProcedureDatabase {
     return new ProcedureDatabase()
+}
+
+export function openScreenDatabase(): ScreenDatabase {
+    return new ScreenDatabase()
 }
 
 export function loadCubeGraphWrapper() {
@@ -204,6 +209,7 @@ declare global {
             loadCubeGraphWrapper: typeof loadCubeGraphWrapper
             loadProcedureGraphWrapper: typeof loadProcedureGraphWrapper
             openCubeDatabase: typeof openCubeDatabase
+            openScreenDatabase: typeof openScreenDatabase
             ProcedureDatabase: typeof ProcedureDatabase
             openProcedureDatabase: typeof openProcedureDatabase
             printTest: typeof printTest
@@ -222,6 +228,7 @@ window.BoardWorldModel = {
     loadCubeGraphWrapper,
     loadProcedureGraphWrapper,
     openCubeDatabase,
+    openScreenDatabase,
     ProcedureDatabase,
     openProcedureDatabase,
     printTest,

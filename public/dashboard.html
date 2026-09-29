@@ -14,6 +14,7 @@
   <div class="tabs" role="tablist" aria-label="Stored data">
     <button class="tab active" id="cubesTab" type="button" role="tab" aria-selected="true">Cubes</button>
     <button class="tab" id="proceduresTab" type="button" role="tab" aria-selected="false">Procedures</button>
+    <button class="tab" id="capsulesTab" type="button" role="tab" aria-selected="false">Capsules &amp; Screens</button>
   </div>
   <section class="tab-panel" id="cubesPanel" role="tabpanel">
     <div class="actions">
@@ -34,6 +35,22 @@
     <p id="procedureStorageSize" class="storage-size"></p>
     <input id="procedureSearch" class="search" type="search" placeholder="Search procedures" aria-label="Search procedures">
     <ul id="procedures"></ul>
+  </section>
+  <section class="tab-panel" id="capsulesPanel" role="tabpanel" hidden>
+    <div class="capsule-columns">
+      <section aria-labelledby="capsuleListHeading">
+        <h2 id="capsuleListHeading">Capsules</h2>
+        <p id="capsuleStorageSize" class="storage-size"></p>
+        <input id="capsuleSearch" class="search" type="search" placeholder="Search capsules" aria-label="Search capsules">
+        <ul id="capsules"></ul>
+      </section>
+      <section aria-labelledby="screenListHeading">
+        <h2 id="screenListHeading">Screens</h2>
+        <p id="screenStorageSize" class="storage-size"></p>
+        <input id="screenSearch" class="search" type="search" placeholder="Search screens" aria-label="Search screens">
+        <ul id="screens"></ul>
+      </section>
+    </div>
   </section>
   <script src="assets/board-world-model.js"></script>
   <script src="vis-network.min.js"></script>

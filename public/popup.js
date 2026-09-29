@@ -6,11 +6,7 @@ const modelLine = document.getElementById("modelLine");
 
 document.getElementById("btnConnection").addEventListener("click", checkConnection);
 document.getElementById("btnCapsules").addEventListener("click", () =>
-  withSelectedCapsules((capsules) => {
-    output.className = "";
-    output.textContent = JSON.stringify(capsules, null, 2);
-    meta.textContent = `${capsules.length} capsules selected`;
-  })
+  withSelectedCapsules(scanCapsules)
 );
 document.getElementById("btnCubes").addEventListener("click", () => withSelectedDatabase(saveCubes));
 document.getElementById("btnProcedures").addEventListener("click", () => withSelectedDatabase(saveProcedures));
@@ -73,6 +69,38 @@ function collectCapsules(nodes) {
     if (node.path.toLowerCase().endsWith(".bcps")) return [node];
     return Array.isArray(node.items) ? collectCapsules(node.items) : [];
   });
+}
+
+async function scanCapsules(capsules) {
+  const scans = [];
+  let screenCount = 0;
+
+  for (const [index, capsule] of capsules.entries()) {
+    modelLine.textContent = `Scanning ${index + 1}/${capsules.length}: ${capsule.name}`;
+    const response = await sendToContentScript({
+      type: "CALL",
+      endpoint: "getSitemap",
+      params: { path: capsule.path },
+    });
+    if (!response?.success) {
+      throw new Error(response?.error || `Could not get sitemap for ${capsule.path}.`);
+    }
+
+    const sitemap = response.result.data;
+    if (!sitemap || !Array.isArray(sitemap.items)) {
+      throw new Error(`The sitemap response for ${capsule.path} is not a valid list.`);
+    }
+
+    screenCount += sitemap.items.length;
+    scans.push({ capsule, sitemap });
+  }
+
+  const database = window.BoardWorldModel.openScreenDatabase();
+  await database.saveScannedCapsules(scans);
+  modelLine.textContent = `${capsules.length} capsules · ${screenCount} screens stored`;
+  output.className = "";
+  output.textContent = JSON.stringify(capsules, null, 2);
+  meta.textContent = "Capsule and sitemap data saved to the screen database";
 }
 
 function chooseCapsules(tree, capsules) {

@@ -54,6 +54,7 @@ export type ProcedureMetadataJSON = {
 export type ScreenMetadataJSON = {
   id: string,
 	type?: number,
+	parent?: string,
 	text: string
 }
 

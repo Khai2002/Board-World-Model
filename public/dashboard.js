@@ -8,14 +8,22 @@ const deleteModelButton = document.getElementById("deleteModelButton");
 const deleteAllButton = document.getElementById("deleteAllButton");
 const cubesTab = document.getElementById("cubesTab");
 const proceduresTab = document.getElementById("proceduresTab");
+const capsulesTab = document.getElementById("capsulesTab");
 const cubesPanel = document.getElementById("cubesPanel");
 const proceduresPanel = document.getElementById("proceduresPanel");
+const capsulesPanel = document.getElementById("capsulesPanel");
 const tabs = document.querySelector(".tabs");
 const proceduresList = document.getElementById("procedures");
 const cubeStorageSize = document.getElementById("cubeStorageSize");
 const procedureStorageSize = document.getElementById("procedureStorageSize");
 const cubeSearch = document.getElementById("cubeSearch");
 const procedureSearch = document.getElementById("procedureSearch");
+const capsulesList = document.getElementById("capsules");
+const screensList = document.getElementById("screens");
+const capsuleStorageSize = document.getElementById("capsuleStorageSize");
+const screenStorageSize = document.getElementById("screenStorageSize");
+const capsuleSearch = document.getElementById("capsuleSearch");
+const screenSearch = document.getElementById("screenSearch");
 
 const detailsTab = document.createElement("button");
 detailsTab.className = "tab";
@@ -181,10 +189,13 @@ function showDetails(title, data, viewState) {
   detailsTab.setAttribute("aria-selected", "true");
   cubesTab.classList.remove("active");
   proceduresTab.classList.remove("active");
+  capsulesTab.classList.remove("active");
   cubesTab.setAttribute("aria-selected", "false");
   proceduresTab.setAttribute("aria-selected", "false");
+  capsulesTab.setAttribute("aria-selected", "false");
   cubesPanel.hidden = true;
   proceduresPanel.hidden = true;
+  capsulesPanel.hidden = true;
   detailsPanel.hidden = false;
   graphOutput.hidden = !graphData;
   if (data.cube) renderCubeGraph(data.cube, requestId, viewState);
@@ -638,6 +649,8 @@ function filterList(list, query) {
 copyDetailsButton.addEventListener("click", copyDetailsJson);
 cubeSearch.addEventListener("input", () => filterList(cubesList, cubeSearch.value));
 procedureSearch.addEventListener("input", () => filterList(proceduresList, procedureSearch.value));
+capsuleSearch.addEventListener("input", () => filterList(capsulesList, capsuleSearch.value));
+screenSearch.addEventListener("input", () => filterList(screensList, screenSearch.value));
 
 async function getBackup() {
   const db = openCubeDatabase();
@@ -770,18 +783,90 @@ async function loadProcedures() {
   }
 }
 
+async function loadCapsulesAndScreens() {
+  try {
+    const db = window.BoardWorldModel.openScreenDatabase();
+    const [capsules, screens] = await Promise.all([
+      db.capsule.toArray(),
+      db.screenMetadata.toArray(),
+    ]);
+    const actualScreens = screens.filter(screen => screen.is_screen);
+    capsules.sort((left, right) => left.path.localeCompare(right.path));
+    actualScreens.sort((left, right) => left.text.localeCompare(right.text));
+
+    const screenCounts = new Map();
+    for (const screen of actualScreens) {
+      screenCounts.set(screen.capsule, (screenCounts.get(screen.capsule) || 0) + 1);
+    }
+
+    capsulesList.replaceChildren();
+    screensList.replaceChildren();
+    capsuleStorageSize.textContent = `${capsules.length} capsule${capsules.length === 1 ? "" : "s"} stored`;
+    screenStorageSize.textContent = `${actualScreens.length} screen${actualScreens.length === 1 ? "" : "s"} stored`;
+    status.textContent = `${capsules.length} capsules · ${actualScreens.length} screens stored`;
+
+    for (const capsule of capsules) {
+      const item = document.createElement("li");
+      item.dataset.search = `${capsule.name} ${capsule.path}`.toLowerCase();
+      item.textContent = `${capsule.name || "Unnamed capsule"} `;
+      const path = document.createElement("code");
+      path.textContent = capsule.path;
+      const count = document.createElement("span");
+      const screenCount = screenCounts.get(capsule.path) || 0;
+      count.textContent = ` · ${screenCount} screen entr${screenCount === 1 ? "y" : "ies"}`;
+      item.append(path, count);
+      capsulesList.appendChild(item);
+    }
+
+    for (const screen of actualScreens) {
+      const item = document.createElement("li");
+      item.dataset.search = `${screen.text} ${screen.capsule} ${screen.id}`.toLowerCase();
+      item.textContent = `${screen.text || "Unnamed screen"} `;
+      const capsulePath = document.createElement("code");
+      capsulePath.textContent = screen.capsule;
+      item.appendChild(capsulePath);
+      if (screen.is_home) item.append(" · Home");
+      if (!screen.is_screen) item.append(" · Folder");
+      screensList.appendChild(item);
+    }
+
+    if (capsules.length === 0) {
+      const empty = document.createElement("li");
+      empty.textContent = "No capsules stored";
+      empty.dataset.search = "";
+      capsulesList.appendChild(empty);
+    }
+    if (actualScreens.length === 0) {
+      const empty = document.createElement("li");
+      empty.textContent = "No screens stored";
+      empty.dataset.search = "";
+      screensList.appendChild(empty);
+    }
+    filterList(capsulesList, capsuleSearch.value);
+    filterList(screensList, screenSearch.value);
+  } catch (error) {
+    status.textContent = `Could not read capsule database: ${error.message}`;
+  }
+}
+
 function showTab(tab) {
+  const showCubes = tab === "cubes";
   const showProcedures = tab === "procedures";
-  cubesTab.classList.toggle("active", !showProcedures);
+  const showCapsules = tab === "capsules";
+  cubesTab.classList.toggle("active", showCubes);
   proceduresTab.classList.toggle("active", showProcedures);
+  capsulesTab.classList.toggle("active", showCapsules);
   detailsTab.classList.remove("active");
-  cubesTab.setAttribute("aria-selected", String(!showProcedures));
+  cubesTab.setAttribute("aria-selected", String(showCubes));
   proceduresTab.setAttribute("aria-selected", String(showProcedures));
+  capsulesTab.setAttribute("aria-selected", String(showCapsules));
   detailsTab.setAttribute("aria-selected", "false");
-  cubesPanel.hidden = showProcedures;
+  cubesPanel.hidden = !showCubes;
   proceduresPanel.hidden = !showProcedures;
+  capsulesPanel.hidden = !showCapsules;
   detailsPanel.hidden = true;
   if (showProcedures) loadProcedures();
+  else if (showCapsules) loadCapsulesAndScreens();
   else loadCubes();
 }
 
@@ -835,14 +920,15 @@ async function deleteSelectedModel() {
 }
 
 async function deleteAllData() {
-  if (!confirm("Delete all locally stored cubes, relationships, and procedures? This cannot be undone.")) return;
+  if (!confirm("Delete all locally stored cubes, relationships, procedures, capsules, and screens? This cannot be undone.")) return;
 
   try {
     await Promise.all([
       openCubeDatabase().delete(),
       openProcedureDatabase().delete(),
+      window.BoardWorldModel.openScreenDatabase().delete(),
     ]);
-    await Promise.all([loadCubes(), loadProcedures()]);
+    await Promise.all([loadCubes(), loadProcedures(), loadCapsulesAndScreens()]);
   } catch (error) {
     status.textContent = `Could not delete cube database: ${error.message}`;
   }
@@ -861,4 +947,5 @@ deleteModelButton.addEventListener("click", deleteSelectedModel);
 deleteAllButton.addEventListener("click", deleteAllData);
 cubesTab.addEventListener("click", () => showTab("cubes"));
 proceduresTab.addEventListener("click", () => showTab("procedures"));
+capsulesTab.addEventListener("click", () => showTab("capsules"));
 loadCubes();

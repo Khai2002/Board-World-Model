@@ -25,7 +25,7 @@ const RESOURCES = {
     getProcedures: { url: "/api/databaseProceduresManager/getProcedures?path={dbname}", method: "POST" },
     addOrUpdateProcedure: { url: "/api/databaseProceduresManager/addOrUpdateProcedure?path={dbname}", method: "POST" },
     getCapsules: { url: "/api/Capsules/Get", method: "GET" },
-    getSitemap: { url: "/api/capsulesDesigner/getSitemap?capsulePath={path}&screenId=00000000-0000-0000-0000-000000000000", method: "GET" },
+    getSitemap: { url: "/api/capsulesDesigner/getSitemap?capsulePath={path}&screenId=00000000-0000-0000-0000-000000000000&isDesign=false", method: "GET" },
     getCapsuleCoreProcedures: { url: "/api/CapsuleProceduresManager/GetCoreProcedures?path={path}", method: "GET" },
     getCapsuleProcedures: { url: "/api/CapsuleProceduresManager/getProcedures?path={path}", method: "POST" },
     addOrUpdateCapsuleProcedure: { url: "/api/CapsuleProceduresManager/addOrUpdateProcedure?path={dbname}", method: "POST" },
