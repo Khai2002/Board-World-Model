@@ -50,3 +50,14 @@ export type ProcedureMetadataJSON = {
   procedureType: number
   defaultDatabase: string
 }
+
+export type ScreenMetadataJSON = {
+  id: string,
+	type?: number,
+	text: string
+}
+
+export type CapsuleMetadataJSON = {
+  name: string,
+  path: string
+}

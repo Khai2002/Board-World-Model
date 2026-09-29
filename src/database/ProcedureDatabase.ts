@@ -38,7 +38,7 @@ export default class ProcedureDatabase extends Dexie {
     }
 
     constructor(name = "procedure-model") {
-        super(name)
+        super(name);
 
         this.version(1).stores({
             procedureMetadata: "&id, name, defaultDatabase, [defaultDatabase+name]",
