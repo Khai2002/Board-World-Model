@@ -350,8 +350,8 @@ async function saveProcedures(modelId) {
     }
 
     await db.transaction("rw", db.procedureMetadata, db.procedures, async () => {
-      await db.procedureMetadata.clear();
-      await db.procedures.clear();
+      await db.procedureMetadata.where("defaultDatabase").equals(modelId).delete();
+      await db.procedures.where("defaultDatabase").equals(modelId).delete();
       await db.procedureMetadata.bulkPut(metadataRows);
       await db.procedures.bulkPut(detailRows);
     });

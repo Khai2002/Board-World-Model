@@ -89,6 +89,22 @@ function ensureProcedureListStyles() {
       color: #202124;
       text-decoration: underline;
     }
+
+    .procedure-warning {
+      margin: 6px 0;
+      padding: 6px 8px;
+      border-left: 3px solid #b45309;
+      background: #fffbeb;
+      color: #92400e;
+      font-weight: 500;
+    }
+
+    .procedure-warning-detail {
+      margin-top: 2px;
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 400;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -143,7 +159,11 @@ async function populateProcedureOverlay(panelEl, overlay) {
       loadProcedure,
       procedureDetails,
     );
-    const { procedure: parsedProcedure, proceduresToExecute } = recursiveModel;
+    const {
+      procedure: parsedProcedure,
+      proceduresToExecute,
+      missingProcedures,
+    } = recursiveModel;
     const proceduresToDisplay = [
       { procedure: parsedProcedure, depth: 0 },
       ...proceduresToExecute,
@@ -226,8 +246,9 @@ async function populateProcedureOverlay(panelEl, overlay) {
         const details = document.createElement('details');
         const summary = document.createElement('summary');
         const childList = document.createElement('ul');
+        const procedureDatabase = calledProcedure.defaultDatabase || modelPath;
         const procedureUrl = calledProcedure.url
-          ?? `${window.location.origin}/data-models/${encodeURIComponent(modelPath)}/procedures/${encodeURIComponent(calledProcedure.uniqueId ?? calledProcedure.name)}`;
+          ?? `${window.location.origin}/data-models/${encodeURIComponent(procedureDatabase)}/procedures/${encodeURIComponent(calledProcedure.uniqueId ?? calledProcedure.name)}`;
         const writtenBlocks = writtenBlocksByProcedure.get(
           `${calledProcedure.defaultDatabase}:${calledProcedure.name}`,
         ) ?? [];
@@ -302,6 +323,25 @@ async function populateProcedureOverlay(panelEl, overlay) {
     // overlay.appendChild(info);
     overlay.appendChild(calledLabel);
     overlay.appendChild(calledList);
+    if (missingProcedures.length > 0) {
+      const warningLabel = document.createElement('h3');
+      warningLabel.textContent = `Missing procedure details (${missingProcedures.length})`;
+      warningLabel.style.margin = '16px 0 8px 0';
+      const warningList = document.createElement('ul');
+      warningList.className = 'procedure-list';
+      missingProcedures.forEach(({ identifier, caller, group, detail }) => {
+        const warningItem = document.createElement('li');
+        warningItem.className = 'procedure-warning';
+        warningItem.textContent = `${identifier.defaultDatabase}:${identifier.name}`;
+        const warningDetail = document.createElement('div');
+        warningDetail.className = 'procedure-warning-detail';
+        warningDetail.textContent = `Called by ${caller.description} (${caller.defaultDatabase}:${caller.name}) in ${group}: ${detail}`;
+        warningItem.appendChild(warningDetail);
+        warningList.appendChild(warningItem);
+      });
+      overlay.appendChild(warningLabel);
+      overlay.appendChild(warningList);
+    }
     overlay.appendChild(copyButton);
     // overlay.appendChild(jsonLabel);
     // overlay.appendChild(jsonOutput);

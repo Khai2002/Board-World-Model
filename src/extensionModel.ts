@@ -24,11 +24,19 @@ export type ProcedureLoader = (
 export type RecursiveProcedureModel = {
     procedure: Procedure
     proceduresToExecute: ProcedureExecution[]
+    missingProcedures: MissingProcedureWarning[]
 }
 
 export type ProcedureExecution = {
     procedure: Procedure
     depth: number
+}
+
+export type MissingProcedureWarning = {
+    identifier: ProcedureIdentifier
+    caller: Pick<Procedure, "name" | "description" | "defaultDatabase">
+    group: string
+    detail: string
 }
 
 export type WrittenDataflowBlock = {
@@ -113,22 +121,42 @@ export async function createRecursiveProcedureModel(
     const rootProcedure = Procedure.fromJSON(asProcedureJSON(procedureData))
     const loaded = new Set<string>([procedureKey(rootProcedure)])
     const proceduresToExecute: ProcedureExecution[] = []
+    const missingProcedures: MissingProcedureWarning[] = []
 
     async function visitProcedure(procedure: Procedure, depth: number): Promise<void> {
-        for (const step of procedure.getStepsByType(CallProcedureStep)) {
-            const calledProcedure = await getStoredProcedure(loadProcedure, step.procedureToExecute)
-            const key = procedureKey(calledProcedure)
-            if (loaded.has(key)) continue
+        for (const group of procedure.procedureGroups) {
+            for (const step of group.steps.filter(
+                (candidate): candidate is CallProcedureStep => candidate instanceof CallProcedureStep,
+            )) {
+                const procedureData = await loadProcedure(step.procedureToExecute)
+                if (!procedureData) {
+                    missingProcedures.push({
+                        identifier: step.procedureToExecute,
+                        caller: {
+                            name: procedure.name,
+                            description: procedure.description,
+                            defaultDatabase: procedure.defaultDatabase,
+                        },
+                        group: group.description,
+                        detail: step.detail,
+                    })
+                    continue
+                }
 
-            loaded.add(key)
-            proceduresToExecute.push({ procedure: calledProcedure, depth })
-            await visitProcedure(calledProcedure, depth + 1)
+                const calledProcedure = Procedure.fromJSON(asProcedureJSON(procedureData))
+                const key = procedureKey(calledProcedure)
+                if (loaded.has(key)) continue
+
+                loaded.add(key)
+                proceduresToExecute.push({ procedure: calledProcedure, depth })
+                await visitProcedure(calledProcedure, depth + 1)
+            }
         }
     }
 
     await visitProcedure(rootProcedure, 1)
 
-    return { procedure: rootProcedure, proceduresToExecute }
+    return { procedure: rootProcedure, proceduresToExecute, missingProcedures }
 }
 
 async function getStoredProcedure(
