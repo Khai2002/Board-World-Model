@@ -646,6 +646,19 @@ function filterList(list, query) {
   }
 }
 
+async function selectScreen(screen) {
+  const title = `Screen: ${screen.text || "Unnamed screen"}`;
+  try {
+    const detail = await window.BoardWorldModel.openScreenDatabase()
+      .getScreenDetail(screen.capsule, screen.id);
+    showDetails(title, detail?.data ?? {
+      error: "Screen details are not stored. Scan this capsule from the popup first.",
+    });
+  } catch (error) {
+    status.textContent = `Could not read screen details: ${error.message}`;
+  }
+}
+
 copyDetailsButton.addEventListener("click", copyDetailsJson);
 cubeSearch.addEventListener("input", () => filterList(cubesList, cubeSearch.value));
 procedureSearch.addEventListener("input", () => filterList(proceduresList, procedureSearch.value));
@@ -827,6 +840,7 @@ async function loadCapsulesAndScreens() {
       item.appendChild(capsulePath);
       if (screen.is_home) item.append(" · Home");
       if (!screen.is_screen) item.append(" · Folder");
+      makeClickableItem(item, () => selectScreen(screen));
       screensList.appendChild(item);
     }
 

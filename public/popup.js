@@ -16,6 +16,7 @@ document.getElementById("btnDashboard").addEventListener("click", () => {
 });
 
 const PROCEDURE_BATCH_SIZE = 10;
+const SCREEN_DETAIL_BATCH_SIZE = 10;
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -74,6 +75,7 @@ function collectCapsules(nodes) {
 async function scanCapsules(capsules) {
   const scans = [];
   let screenCount = 0;
+  let detailCount = 0;
 
   for (const [index, capsule] of capsules.entries()) {
     modelLine.textContent = `Scanning ${index + 1}/${capsules.length}: ${capsule.name}`;
@@ -91,8 +93,43 @@ async function scanCapsules(capsules) {
       throw new Error(`The sitemap response for ${capsule.path} is not a valid list.`);
     }
 
-    screenCount += sitemap.items.length;
-    scans.push({ capsule, sitemap });
+    const screens = sitemap.items.filter((screen) => screen.type === 1);
+    const screenDetails = [];
+    let capsuleDetailCount = 0;
+    for (let index = 0; index < screens.length; index += SCREEN_DETAIL_BATCH_SIZE) {
+      const batch = screens.slice(index, index + SCREEN_DETAIL_BATCH_SIZE);
+      modelLine.textContent = `Loading screen details ${capsuleDetailCount + 1}/${screens.length}: ${capsule.name}`;
+      const batchDetails = await Promise.all(batch.map(async (screen) => {
+        const detailResponse = await sendToContentScript({
+          type: "CALL",
+          endpoint: "getScreen",
+          params: {},
+          body: {
+            disableRefreshOnOpen: false,
+            capsulePathSource: capsule.path,
+            screenArgs: {
+              discriminator: "ScreenArgsDto",
+              cpsPath: capsule.path,
+              screenId: screen.id,
+            },
+            isFirstOpening: false,
+            isInEdit: false,
+          },
+        });
+        if (!detailResponse?.success) {
+          throw new Error(
+            detailResponse?.error || `Could not get screen details for ${screen.text || screen.id}.`,
+          );
+        }
+        return { screenId: screen.id, data: detailResponse.result.data };
+      }));
+      screenDetails.push(...batchDetails);
+      capsuleDetailCount += batchDetails.length;
+      detailCount += batchDetails.length;
+    }
+
+    screenCount += screens.length;
+    scans.push({ capsule, sitemap, screenDetails });
   }
 
   const database = window.BoardWorldModel.openScreenDatabase();
@@ -100,7 +137,7 @@ async function scanCapsules(capsules) {
   modelLine.textContent = `${capsules.length} capsules · ${screenCount} screens stored`;
   output.className = "";
   output.textContent = JSON.stringify(capsules, null, 2);
-  meta.textContent = "Capsule and sitemap data saved to the screen database";
+  meta.textContent = `${detailCount} screen details saved with capsule and sitemap data`;
 }
 
 function chooseCapsules(tree, capsules) {
@@ -310,17 +347,7 @@ async function saveCubes(modelId) {
 
     const cubes = normalizeCubeList(response.result.data);
     const db = window.BoardWorldModel.openCubeDatabase();
-    const cubeRows = cubes.map((cube) => ({
-      id: `${modelId}:${cube.idx}`,
-      modelId,
-      cubeId: cube.idx,
-      name: cube.extended,
-      data: cube,
-    }));
-    await db.transaction("rw", db.cubes, async () => {
-      await db.cubes.where("modelId").equals(modelId).delete();
-      await db.cubes.bulkPut(cubeRows);
-    });
+    await db.saveCubes(modelId, cubes);
     modelLine.textContent = `${modelId} · ${cubes.length} cubes stored`;
     output.className = "";
     output.textContent = JSON.stringify(cubes, null, 2);
@@ -343,15 +370,11 @@ async function saveProcedures(modelId) {
 
     const metadata = normalizeProcedureList(metadataResponse.result.data);
     const db = window.BoardWorldModel.openProcedureDatabase();
-    const metadataRows = metadata.map((procedure) => ({
-      ...procedure,
-      id: `${procedure.defaultDatabase}:${procedure.name}`,
-    }));
 
     let detailCount = 0;
     const detailRows = [];
-    for (let index = 0; index < metadataRows.length; index += PROCEDURE_BATCH_SIZE) {
-      const batch = metadataRows.slice(index, index + PROCEDURE_BATCH_SIZE);
+    for (let index = 0; index < metadata.length; index += PROCEDURE_BATCH_SIZE) {
+      const batch = metadata.slice(index, index + PROCEDURE_BATCH_SIZE);
       const detailResponses = await Promise.all(batch.map((procedure) =>
         sendToContentScript({
           type: "GET_PROCEDURE_FULL",
@@ -369,34 +392,17 @@ async function saveProcedures(modelId) {
       const details = detailResponses.flatMap((response) =>
         normalizeProcedureDetails(response.data)
       );
-      detailRows.push(...details.map((procedure) => ({
-        ...procedure,
-        id: `${procedure.defaultDatabase}:${procedure.name}`,
-      })));
+      detailRows.push(...details);
       detailCount += details.length;
-      modelLine.textContent = `${modelId} · ${detailCount}/${metadataRows.length} procedures stored`;
+      modelLine.textContent = `${modelId} · ${detailCount}/${metadata.length} procedures stored`;
     }
 
-    await db.transaction("rw", db.procedureMetadata, db.procedures, async () => {
-      await db.procedureMetadata.where("defaultDatabase").equals(modelId).delete();
-      await db.procedures.where("defaultDatabase").equals(modelId).delete();
-      await db.procedureMetadata.bulkPut(metadataRows);
-      await db.procedures.bulkPut(detailRows);
-    });
+    await db.saveProcedures(modelId, metadata, detailRows);
 
-    const mismatchedProcedure = detailRows.find(
-      (procedure) => procedure.defaultDatabase !== modelId,
-    );
-    if (mismatchedProcedure) {
-      throw new Error(
-        `Procedure database ${mismatchedProcedure.defaultDatabase} does not match model ${modelId}.`,
-      );
-    }
-
-    modelLine.textContent = `${modelId} · ${metadataRows.length} procedures stored`;
+    modelLine.textContent = `${modelId} · ${metadata.length} procedures stored`;
     output.className = "";
-    output.textContent = JSON.stringify(metadataRows, null, 2);
-    meta.textContent = `${metadataRows.length} metadata records, ${detailCount} detailed records`;
+    output.textContent = JSON.stringify(metadata, null, 2);
+    meta.textContent = `${metadata.length} metadata records, ${detailCount} detailed records`;
   } catch (error) {
     renderError(error.message);
   }

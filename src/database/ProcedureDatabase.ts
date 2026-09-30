@@ -60,4 +60,35 @@ export default class ProcedureDatabase extends Dexie {
         const id = ProcedureDatabase.getId({defaultDatabase: database, name: idx});
         return this.procedures.get(id);
     }
+
+    async saveProcedures(
+        modelId: string,
+        metadata: ProcedureMetadataJSON[],
+        procedures: ProcedureJSON[],
+    ): Promise<void> {
+        const metadataRows = metadata.map(procedure => ({
+            ...procedure,
+            id: ProcedureDatabase.getId(procedure),
+        }));
+        const procedureRows = procedures.map(procedure => ({
+            ...procedure,
+            id: ProcedureDatabase.getId(procedure),
+        }));
+
+        const mismatchedProcedure = procedureRows.find(
+            procedure => procedure.defaultDatabase !== modelId,
+        );
+        if (mismatchedProcedure) {
+            throw new Error(
+                `Procedure database ${mismatchedProcedure.defaultDatabase} does not match model ${modelId}.`,
+            );
+        }
+
+        await this.transaction("rw", this.procedureMetadata, this.procedures, async () => {
+            await this.procedureMetadata.where("defaultDatabase").equals(modelId).delete();
+            await this.procedures.where("defaultDatabase").equals(modelId).delete();
+            await this.procedureMetadata.bulkPut(metadataRows);
+            await this.procedures.bulkPut(procedureRows);
+        });
+    }
 }

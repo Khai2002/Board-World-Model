@@ -9,6 +9,11 @@ export type CubeNode = {
     data: unknown
 }
 
+export type CubeData = {
+    idx: string | number
+    extended?: string
+}
+
 /** A directed dataflow edge row stored in the graph table. */
 export type CubeEdgeProcedure = {
     id: string
@@ -58,5 +63,20 @@ export default class CubeDatabase extends Dexie {
     async getCubeByDatabaseAndIdx(database: string, idx: string | number): Promise<CubeNode | undefined> {
         const id = CubeDatabase.getId(database, idx)
         return this.cubes.get(id);
+    }
+
+    async saveCubes(modelId: string, cubes: CubeData[]): Promise<void> {
+        const cubeRows = cubes.map(cube => ({
+            id: CubeDatabase.getId(modelId, cube.idx),
+            modelId,
+            cubeId: cube.idx,
+            name: cube.extended,
+            data: cube,
+        }));
+
+        await this.transaction("rw", this.cubes, async () => {
+            await this.cubes.where("modelId").equals(modelId).delete();
+            await this.cubes.bulkPut(cubeRows);
+        });
     }
 }
