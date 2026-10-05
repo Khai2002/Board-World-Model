@@ -73,6 +73,10 @@ clearGraphFocusButton.hidden = true;
 const graphOutput = document.createElement("div");
 graphOutput.id = "cubeGraph";
 graphOutput.hidden = true;
+const graphWorkspace = document.createElement("div");
+graphWorkspace.id = "graphWorkspace";
+const graphSelectionDetails = document.createElement("div");
+graphSelectionDetails.id = "graphSelectionDetails";
 const graphContextMenu = document.createElement("div");
 graphContextMenu.className = "graph-context-menu";
 graphContextMenu.setAttribute("role", "menu");
@@ -80,8 +84,13 @@ graphContextMenu.hidden = true;
 const focusGraphNodeButton = document.createElement("button");
 focusGraphNodeButton.type = "button";
 focusGraphNodeButton.setAttribute("role", "menuitem");
-focusGraphNodeButton.textContent = "Focus graph here";
+focusGraphNodeButton.textContent = "Focus on this node";
 graphContextMenu.appendChild(focusGraphNodeButton);
+const rootGraphNodeButton = document.createElement("button");
+rootGraphNodeButton.type = "button";
+rootGraphNodeButton.setAttribute("role", "menuitem");
+rootGraphNodeButton.textContent = "Make this the root node";
+graphContextMenu.appendChild(rootGraphNodeButton);
 Object.assign(detailsOutput.style, {
   margin: "0",
   padding: "12px",
@@ -95,7 +104,9 @@ Object.assign(detailsOutput.style, {
   fontSize: "12px",
   lineHeight: "1.5",
 });
-detailsPanel.append(graphHeading, graphDirectionSelect, graphDepthSelect, graphFocusSelect, clearGraphFocusButton, graphOutput, detailsHeading, copyDetailsButton, detailsOutput, graphContextMenu);
+graphWorkspace.append(graphOutput, graphSelectionDetails);
+graphSelectionDetails.append(detailsHeading, copyDetailsButton, detailsOutput);
+detailsPanel.append(graphHeading, graphDirectionSelect, graphDepthSelect, graphFocusSelect, clearGraphFocusButton, graphWorkspace, graphContextMenu);
 document.body.appendChild(detailsPanel);
 
 let cubeGraphNetwork;
@@ -104,6 +115,7 @@ let currentGraphCube;
 let currentGraphProcedure;
 let currentGraphFocusId;
 let focusGraphNode;
+let makeRootGraphNode;
 const graphGroupColors = [
   { background: "#dbeafe", border: "#2563eb" },
   { background: "#dcfce7", border: "#16a34a" },
@@ -170,6 +182,7 @@ function showDetails(title, data, viewState) {
   detailsHeading.textContent = title;
   detailsOutput.textContent = JSON.stringify(data, null, 2);
   const graphData = data.cube || data.procedure;
+  detailsPanel.classList.toggle("graph-layout", Boolean(graphData));
   graphHeading.hidden = !graphData;
   graphDirectionSelect.hidden = !graphData;
   graphDepthSelect.hidden = !graphData;
@@ -229,6 +242,11 @@ focusGraphNodeButton.addEventListener("click", () => {
   focusGraphNode?.();
 });
 
+rootGraphNodeButton.addEventListener("click", () => {
+  graphContextMenu.hidden = true;
+  makeRootGraphNode?.();
+});
+
 document.addEventListener("pointerdown", (event) => {
   if (!graphContextMenu.contains(event.target)) graphContextMenu.hidden = true;
 });
@@ -237,11 +255,14 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") graphContextMenu.hidden = true;
 });
 
-function showGraphContextMenu(event, focusAction) {
+function showGraphContextMenu(event, focusAction, rootAction, focusLabel, rootLabel) {
   event.preventDefault();
   focusGraphNode = focusAction;
-  graphContextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 170)}px`;
-  graphContextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 44)}px`;
+  makeRootGraphNode = rootAction;
+  focusGraphNodeButton.textContent = focusLabel;
+  rootGraphNodeButton.textContent = rootLabel;
+  graphContextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 210)}px`;
+  graphContextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 88)}px`;
   graphContextMenu.hidden = false;
 }
 
@@ -250,7 +271,15 @@ function cubeNodeId(modelId, cubeId) {
 }
 
 function cubeLabel(cube) {
-  return `${cube.name || "Unnamed cube"}\n(${cube.modelId}:${cube.cubeId})`;
+  return cube.name || "Unnamed cube";
+}
+
+function cubeNodeTitle(cube) {
+  return `${cubeLabel(cube)}\nID: ${cubeNodeId(cube.modelId, cube.cubeId)}`;
+}
+
+function cubeSelectLabel(cube) {
+  return `${cubeLabel(cube)} (${cubeNodeId(cube.modelId, cube.cubeId)})`;
 }
 
 function curveReciprocalEdges(edges) {
@@ -361,9 +390,9 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       .filter(id => id !== selectedId)
       .map(id => cubesById.get(id))
       .filter(Boolean)
-      .sort((left, right) => cubeLabel(left).localeCompare(cubeLabel(right)));
+      .sort((left, right) => cubeSelectLabel(left).localeCompare(cubeSelectLabel(right)));
     graphFocusSelect.replaceChildren(new Option("Focus on a cube", ""), ...focusOptions.map(cube =>
-      new Option(cubeLabel(cube).replace("\n", " "), cubeNodeId(cube.modelId, cube.cubeId))
+      new Option(cubeSelectLabel(cube), cubeNodeId(cube.modelId, cube.cubeId))
     ));
     graphFocusSelect.value = currentGraphFocusId || "";
 
@@ -390,7 +419,7 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       return {
         id,
         label: cube ? cubeLabel(cube) : id,
-        title: cube ? `${group}\n${JSON.stringify(cube, null, 2)}` : id,
+        title: cube ? cubeNodeTitle(cube) : id,
         level: levels.get(id) ?? 0,
         shape: id === selectedId ? "ellipse" : "box",
         size: id === selectedId ? 28 : undefined,
@@ -458,11 +487,6 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
         });
       }
     });
-    network.on("doubleClick", ({ nodes }) => {
-      const [nodeId] = nodes;
-      const cube = cubesById.get(nodeId);
-      if (cube) selectGraphCube(cube);
-    });
     network.on("oncontext", ({ event, pointer }) => {
       const nodeId = network.getNodeAt(pointer.DOM);
       const cube = cubesById.get(nodeId);
@@ -470,15 +494,25 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       showGraphContextMenu(event, () => {
         graphFocusSelect.value = nodeId;
         graphFocusSelect.dispatchEvent(new Event("change"));
-      });
+      }, () => selectGraphCube(cube), "Focus on this cube", "Make this the root cube");
     });
-    network.on("click", ({ edges: selectedEdges }) => {
+    network.on("click", ({ nodes: selectedNodes, edges: selectedEdges }) => {
+      const [selectedNodeId] = selectedNodes;
+      const selectedNode = cubesById.get(selectedNodeId);
+      if (selectedNode) {
+        detailsHeading.textContent = `Cube: ${cubeLabel(selectedNode)}`;
+        detailsOutput.textContent = JSON.stringify(selectedNode, null, 2);
+        return;
+      }
       const [edgeId] = selectedEdges;
       if (!edgeId) return;
       const edge = cubeEdgesById.get(edgeId);
-      if (!edge) return;
-      detailsHeading.textContent = `Dataflow edge: ${edge.id}`;
-      detailsOutput.textContent = JSON.stringify(edge, null, 2);
+      const [fromId, toId] = edgeId.split("->");
+      detailsHeading.textContent = `Dataflow edge: ${edgeId}`;
+      detailsOutput.textContent = JSON.stringify(edge || {
+        from: cubesById.get(fromId) || fromId,
+        to: cubesById.get(toId) || toId,
+      }, null, 2);
     });
     cubeGraphNetwork = network;
   } catch (error) {
@@ -493,15 +527,24 @@ function procedureNodeId(defaultDatabase, name) {
 }
 
 function procedureLabel(procedure) {
-  return `${procedure.description || "Unnamed procedure"}\n(${procedure.defaultDatabase}:${procedure.name})`;
+  return procedure.description || "Unnamed procedure";
+}
+
+function procedureNodeTitle(procedure) {
+  return `${procedureLabel(procedure)}\nID: ${procedure.defaultDatabase}:${procedure.name}`;
+}
+
+function procedureSelectLabel(procedure) {
+  return `${procedureLabel(procedure)} (${procedure.defaultDatabase}:${procedure.name})`;
 }
 
 async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
   graphOutput.textContent = "Loading graph...";
   try {
     const db = openProcedureDatabase();
-    const [procedures, graph] = await Promise.all([
+    const [procedures, procedureEdges, graph] = await Promise.all([
       db.procedures.toArray(),
+      db.procedureEdges.toArray(),
       window.BoardWorldModel.loadProcedureGraphWrapper(),
     ]);
     if (requestId !== graphRequestId) return;
@@ -545,9 +588,9 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
       .filter(id => id !== selectedId)
       .map(id => proceduresById.get(id))
       .filter(Boolean)
-      .sort((left, right) => procedureLabel(left).localeCompare(procedureLabel(right)));
+      .sort((left, right) => procedureSelectLabel(left).localeCompare(procedureSelectLabel(right)));
     graphFocusSelect.replaceChildren(new Option("Focus on a procedure", ""), ...focusOptions.map(procedure =>
-      new Option(procedureLabel(procedure).replace("\n", " "), procedureNodeId(procedure.defaultDatabase, procedure.name))
+      new Option(procedureSelectLabel(procedure), procedureNodeId(procedure.defaultDatabase, procedure.name))
     ));
     graphFocusSelect.value = currentGraphFocusId || "";
 
@@ -569,7 +612,7 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
       return {
         id,
         label: procedure ? procedureLabel(procedure) : id,
-        title: procedure ? JSON.stringify(procedure, null, 2) : id,
+        title: procedure ? procedureNodeTitle(procedure) : id,
         level: levels.get(id) ?? 0,
         shape: id === selectedId ? "ellipse" : "box",
         size: id === selectedId ? 28 : undefined,
@@ -582,6 +625,7 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
         },
       };
     });
+    const procedureEdgesById = new Map(procedureEdges.map(edge => [edge.id, edge]));
     const edges = curveReciprocalEdges([...visibleIds].flatMap(from => graph.children(from)
       .filter(to => visibleIds.has(to))
       .map(to => ({ id: `${from}->${to}`, from, to, arrows: "to" }))));
@@ -606,11 +650,6 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
       network.setOptions({ physics: { enabled: false } });
       if (viewState?.scale) network.moveTo({ position: network.getPosition(selectedId), scale: viewState.scale, animation: false });
     });
-    network.on("doubleClick", ({ nodes }) => {
-      const [nodeId] = nodes;
-      const procedure = proceduresById.get(nodeId);
-      if (procedure) selectGraphProcedure(procedure);
-    });
     network.on("oncontext", ({ event, pointer }) => {
       const nodeId = network.getNodeAt(pointer.DOM);
       const procedure = proceduresById.get(nodeId);
@@ -618,7 +657,25 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
       showGraphContextMenu(event, () => {
         graphFocusSelect.value = nodeId;
         graphFocusSelect.dispatchEvent(new Event("change"));
-      });
+      }, () => selectGraphProcedure(procedure), "Focus on this procedure", "Make this the root procedure");
+    });
+    network.on("click", ({ nodes: selectedNodes, edges: selectedEdges }) => {
+      const [selectedNodeId] = selectedNodes;
+      const selectedProcedureNode = proceduresById.get(selectedNodeId);
+      if (selectedProcedureNode) {
+        detailsHeading.textContent = `Procedure: ${procedureLabel(selectedProcedureNode)}`;
+        detailsOutput.textContent = JSON.stringify(selectedProcedureNode, null, 2);
+        return;
+      }
+      const [edgeId] = selectedEdges;
+      if (!edgeId) return;
+      const [fromId, toId] = edgeId.split("->");
+      const edge = procedureEdgesById.get(edgeId);
+      detailsHeading.textContent = "Procedure call edge";
+      detailsOutput.textContent = JSON.stringify(edge || {
+        from: proceduresById.get(fromId) || fromId,
+        to: proceduresById.get(toId) || toId,
+      }, null, 2);
     });
     cubeGraphNetwork = network;
   } catch (error) {

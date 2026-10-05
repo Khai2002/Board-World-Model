@@ -2,6 +2,7 @@ import ProcedureDatabase, { type ProcedureRecord } from "../database/ProcedureDa
 import Procedure from "../procedure/Procedure";
 import DataflowStep from "../procedure/step/DataflowStep";
 import CubeDatabase, { type CubeEdge, type CubeEdgeProcedure } from "../database/CubeDatabase";
+import { extractVariables, resolveDataflowCubes } from "./resolveDataflowCubes";
 
 
 export async function testCubeEdges(
@@ -69,92 +70,25 @@ export async function createCubeEdgesFromDataflow(
     id: procedureId,
     description: procedure.description,
   };
-  const dataflows = await Promise.all(procedure.getStepsByType(DataflowStep)
-    .map(async dStep => ({
-      database: defaultDatabase,
-      procedure: procedureReference,
-      target: dStep.targetLetter,
-      sources: extractVariables(dStep.expression),
-      blocks: await Promise.all(dStep.layouts
-        .flatMap(layout => layout.blocks)
-        .map(async block => ({ 
-          letter: block.letter, 
-          idx: block.cubeIdx,
-          isVirtualCube: block.cubeIdx === -1 ? true : false,
-          virtualCubeId: block.virtualCubeId,
-          name: 
-            block.cubeIdx === -1
-              ? undefined
-              : await cDb.getCubeByDatabaseAndIdx(defaultDatabase, block.cubeIdx), 
-        })))
-    })));
+  const dataflows = await resolveDataflowCubes(procedure, defaultDatabase, cDb);
 
   const edgesById = new Map<string, CubeEdge>();
-  const virtualCubeSources = new Map<string, Set<number>>();
   for (const dataflow of dataflows) {
-    const blocksByLetter = new Map(
-      dataflow.blocks.map(block => [block.letter, block])
-    );
-    const targetBlock = blocksByLetter.get(dataflow.target);
+    if (dataflow.targetCubeId === undefined) continue;
 
-    if (!targetBlock) {
-      console.warn(`Cannot find target cube for block ${dataflow.target}`);
-      continue;
-    }
-
-    const sourceCubeIds = new Set<number>();
-    for (const source of dataflow.sources) {
-      const sourceBlock = blocksByLetter.get(source);
-      if (!sourceBlock) {
-        console.warn(`Cannot find source cube for block ${source}`);
-        continue;
-      }
-
-      if (sourceBlock.isVirtualCube) {
-        const virtualSources = sourceBlock.virtualCubeId
-          ? virtualCubeSources.get(sourceBlock.virtualCubeId)
-          : undefined;
-        if (!virtualSources) {
-          console.warn(`Cannot find source cube for block ${source}`);
-          continue;
-        }
-        for (const cubeId of virtualSources) sourceCubeIds.add(cubeId);
-      } else if (sourceBlock.name) {
-        sourceCubeIds.add(sourceBlock.idx);
-      } else {
-        console.warn(`Cannot find source cube for block ${source}`);
-      }
-    }
-
-    if (targetBlock.isVirtualCube) {
-      if (!targetBlock.virtualCubeId) {
-        console.warn(`Cannot find virtual cube ID for block ${dataflow.target}`);
-        continue;
-      }
-      const virtualSources = virtualCubeSources.get(targetBlock.virtualCubeId) ?? new Set<number>();
-      for (const cubeId of sourceCubeIds) virtualSources.add(cubeId);
-      virtualCubeSources.set(targetBlock.virtualCubeId, virtualSources);
-      continue;
-    }
-
-    if (!targetBlock.name) {
-      console.warn(`Cannot find target cube for block ${dataflow.target}`);
-      continue;
-    }
-
-    for (const sourceCubeId of sourceCubeIds) {
+    for (const sourceCubeId of dataflow.sourceCubeIds) {
       const edge: CubeEdge = {
         id: CubeDatabase.getEdgeId(
           defaultDatabase,
           sourceCubeId,
           defaultDatabase,
-          targetBlock.idx,
+          dataflow.targetCubeId,
         ),
         fromModelId: defaultDatabase,
         fromCubeId: sourceCubeId,
         toModelId: defaultDatabase,
-        toCubeId: targetBlock.idx,
-        procedures: [dataflow.procedure],
+        toCubeId: dataflow.targetCubeId,
+        procedures: [procedureReference],
       };
       edgesById.set(edge.id, edge);
     }
@@ -176,10 +110,3 @@ export async function createCubeEdgesFromDataflow(
 
   return edges.length;
 }
-
-
-function extractVariables(expression: string): string[] {
-  const matches = expression.match(/\b[a-zA-Z]\b/g);
-  return [...new Set(matches ?? [])];
-}
-

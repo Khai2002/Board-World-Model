@@ -421,9 +421,11 @@ async function createAllEdges(modelId) {
     const cubeDb = window.BoardWorldModel.openCubeDatabase();
     await cubeDb.cubeEdges.where("fromModelId").equals(modelId).delete();
     await procedureDb.procedureEdges.where("fromDefaultDatabase").equals(modelId).delete();
+    await procedureDb.procedureCubeUses.where("procedureDefaultDatabase").equals(modelId).delete();
 
     let cubeEdgeCount = 0;
     let procedureEdgeCount = 0;
+    let procedureCubeUseCount = 0;
     for (const procedure of procedures) {
       cubeEdgeCount += await window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
         procedure.name,
@@ -433,12 +435,16 @@ async function createAllEdges(modelId) {
         procedure.name,
         procedure.defaultDatabase,
       );
+      procedureCubeUseCount += await window.BoardWorldModel.createProcedureCubeUsesFromDataflowWrapper(
+        procedure.name,
+        procedure.defaultDatabase,
+      );
     }
 
     modelLine.textContent = `${modelId} · ${procedures.length} procedures`;
     output.className = "";
-    output.textContent = `Created ${cubeEdgeCount} cube edges and ${procedureEdgeCount} procedure edges.`;
-    meta.textContent = "Edges rebuilt from saved procedure details";
+    output.textContent = `Created ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges, and ${procedureCubeUseCount} procedure-cube relations.`;
+    meta.textContent = "Edges and procedure-cube relations rebuilt from saved procedure details";
   } catch (error) {
     renderError(error.message);
   }
