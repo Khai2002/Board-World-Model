@@ -47,7 +47,10 @@ const copyDetailsButton = document.createElement("button");
 copyDetailsButton.type = "button";
 copyDetailsButton.textContent = "Copy JSON";
 copyDetailsButton.style.marginBottom = "8px";
+const detailsSummary = document.createElement("div");
+detailsSummary.id = "detailsSummary";
 const detailsOutput = document.createElement("pre");
+detailsOutput.hidden = true;
 const graphHeading = document.createElement("h2");
 graphHeading.textContent = "Graph";
 graphHeading.hidden = true;
@@ -105,7 +108,7 @@ Object.assign(detailsOutput.style, {
   lineHeight: "1.5",
 });
 graphWorkspace.append(graphOutput, graphSelectionDetails);
-graphSelectionDetails.append(detailsHeading, copyDetailsButton, detailsOutput);
+graphSelectionDetails.append(detailsHeading, copyDetailsButton, detailsSummary, detailsOutput);
 detailsPanel.append(graphHeading, graphDirectionSelect, graphDepthSelect, graphFocusSelect, clearGraphFocusButton, graphWorkspace, graphContextMenu);
 document.body.appendChild(detailsPanel);
 
@@ -116,6 +119,8 @@ let currentGraphProcedure;
 let currentGraphFocusId;
 let focusGraphNode;
 let makeRootGraphNode;
+let currentDetailsJson = "";
+let selectionDetailsRequestId = 0;
 const graphGroupColors = [
   { background: "#dbeafe", border: "#2563eb" },
   { background: "#dcfce7", border: "#16a34a" },
@@ -154,13 +159,12 @@ function estimateBytes(records) {
 }
 
 async function copyDetailsJson() {
-  const json = detailsOutput.textContent || "";
   try {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(json);
+      await navigator.clipboard.writeText(currentDetailsJson);
     } else {
       const textArea = document.createElement("textarea");
-      textArea.value = json;
+      textArea.value = currentDetailsJson;
       textArea.style.position = "fixed";
       textArea.style.opacity = "0";
       document.body.appendChild(textArea);
@@ -179,9 +183,13 @@ async function copyDetailsJson() {
 
 function showDetails(title, data, viewState) {
   const requestId = ++graphRequestId;
-  detailsHeading.textContent = title;
-  detailsOutput.textContent = JSON.stringify(data, null, 2);
+  selectionDetailsRequestId += 1;
   const graphData = data.cube || data.procedure;
+  detailsHeading.textContent = title;
+  currentDetailsJson = JSON.stringify(data, null, 2);
+  detailsSummary.textContent = graphData
+    ? "Loading node connections..."
+    : "JSON is available using Copy JSON.";
   detailsPanel.classList.toggle("graph-layout", Boolean(graphData));
   graphHeading.hidden = !graphData;
   graphDirectionSelect.hidden = !graphData;
@@ -211,8 +219,14 @@ function showDetails(title, data, viewState) {
   capsulesPanel.hidden = true;
   detailsPanel.hidden = false;
   graphOutput.hidden = !graphData;
-  if (data.cube) renderCubeGraph(data.cube, requestId, viewState);
-  if (data.procedure) renderProcedureGraph(data.procedure, requestId, viewState);
+  if (data.cube) {
+    renderCubeGraph(data.cube, requestId, viewState);
+    void showCubeUsageDetails(data.cube);
+  }
+  if (data.procedure) {
+    renderProcedureGraph(data.procedure, requestId, viewState);
+    void showProcedureUsageDetails(data.procedure);
+  }
 }
 
 graphDirectionSelect.addEventListener("change", () => {
@@ -288,6 +302,117 @@ function curveReciprocalEdges(edges) {
     ? { ...edge, smooth: { type: "curvedCW", roundness: 0.2 } }
     : edge,
   );
+}
+
+function renderUsageCategories(description, categories) {
+  detailsSummary.replaceChildren();
+  const summary = document.createElement("p");
+  summary.textContent = description;
+  detailsSummary.appendChild(summary);
+
+  const total = categories.reduce((count, category) => count + category.items.length, 0);
+  if (total === 0) {
+    const emptyState = document.createElement("p");
+    emptyState.textContent = "No recorded procedure-cube relations. Use Generate all edges in the popup to build them.";
+    detailsSummary.appendChild(emptyState);
+  }
+
+  for (const category of categories) {
+    const heading = document.createElement("h3");
+    heading.textContent = `${category.label} (${category.items.length})`;
+    detailsSummary.appendChild(heading);
+    if (category.items.length === 0) continue;
+
+    const list = document.createElement("ul");
+    for (const item of category.items) {
+      const entry = document.createElement("li");
+      entry.textContent = item.label;
+      if (item.detail) {
+        const detail = document.createElement("small");
+        detail.className = "graph-usage-detail";
+        detail.textContent = item.detail;
+        entry.appendChild(detail);
+      }
+      list.appendChild(entry);
+    }
+    detailsSummary.appendChild(list);
+  }
+}
+
+async function showCubeUsageDetails(cube) {
+  const requestId = ++selectionDetailsRequestId;
+  const cubeId = cubeNodeId(cube.modelId, cube.cubeId);
+  detailsHeading.textContent = `Cube: ${cubeLabel(cube)}`;
+  currentDetailsJson = JSON.stringify(cube, null, 2);
+  try {
+    const procedureDb = openProcedureDatabase();
+    const [uses, procedures, metadata] = await Promise.all([
+      procedureDb.procedureCubeUses.where("cubeRecordId").equals(cubeId).toArray(),
+      procedureDb.procedures.toArray(),
+      procedureDb.procedureMetadata.toArray(),
+    ]);
+    const proceduresById = new Map(procedures.map(procedure => [
+      procedure.id,
+      procedure,
+    ]));
+    const metadataById = new Map(metadata.map(procedure => [procedure.id, procedure]));
+    const categorized = { read: [], write: [], readwrite: [] };
+    for (const use of uses) {
+      const procedure = proceduresById.get(use.procedureId);
+      const procedureMetadata = metadataById.get(use.procedureId);
+      const description = procedure?.description || procedureMetadata?.description || "Unnamed procedure";
+      categorized[use.mode]?.push({
+        label: description,
+        detail: use.procedureDefaultDatabase,
+      });
+    }
+
+    if (requestId !== selectionDetailsRequestId) return;
+    renderUsageCategories("Procedures referencing this cube:", [
+      { label: "Read this cube", items: categorized.read },
+      { label: "Write this cube", items: categorized.write },
+      { label: "Read and write this cube", items: categorized.readwrite },
+    ]);
+  } catch (error) {
+    if (requestId !== selectionDetailsRequestId) return;
+    console.error("Could not load cube procedure usage:", error);
+    detailsSummary.textContent = `Could not load procedure usage: ${error.message}`;
+  }
+}
+
+async function showProcedureUsageDetails(procedure) {
+  const requestId = ++selectionDetailsRequestId;
+  const procedureId = procedureNodeId(procedure.defaultDatabase, procedure.name);
+  detailsHeading.textContent = `Procedure: ${procedureLabel(procedure)}`;
+  currentDetailsJson = JSON.stringify(procedure, null, 2);
+  try {
+    const procedureDb = openProcedureDatabase();
+    const cubeDb = openCubeDatabase();
+    const [uses, cubes] = await Promise.all([
+      procedureDb.procedureCubeUses.where("procedureId").equals(procedureId).toArray(),
+      cubeDb.cubes.toArray(),
+    ]);
+    const cubesById = new Map(cubes.map(cube => [cube.id, cube]));
+    const categorized = { read: [], write: [], readwrite: [] };
+    for (const use of uses) {
+      const cube = cubesById.get(use.cubeRecordId);
+      categorized[use.mode]?.push({
+        label: cube?.name || "Unnamed cube",
+        detail: `${use.cubeModelId}:${use.cubeIdx}`,
+      });
+    }
+
+    if (requestId !== selectionDetailsRequestId) return;
+    renderUsageCategories("Cubes used directly by this procedure:", [
+      { label: "Cubes read", items: categorized.read },
+      { label: "Cubes written", items: categorized.write },
+      { label: "Cubes read and written", items: categorized.readwrite },
+    ]);
+  } catch (error) {
+    if (requestId !== selectionDetailsRequestId) return;
+    console.error("Could not load procedure cube usage:", error);
+    detailsSummary.textContent = `Could not load cube usage: ${error.message}`;
+  }
 }
 
 async function selectGraphCube(cube) {
@@ -500,19 +625,36 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
       const [selectedNodeId] = selectedNodes;
       const selectedNode = cubesById.get(selectedNodeId);
       if (selectedNode) {
-        detailsHeading.textContent = `Cube: ${cubeLabel(selectedNode)}`;
-        detailsOutput.textContent = JSON.stringify(selectedNode, null, 2);
+        void showCubeUsageDetails(selectedNode);
         return;
       }
       const [edgeId] = selectedEdges;
       if (!edgeId) return;
       const edge = cubeEdgesById.get(edgeId);
       const [fromId, toId] = edgeId.split("->");
+      selectionDetailsRequestId += 1;
       detailsHeading.textContent = `Dataflow edge: ${edgeId}`;
-      detailsOutput.textContent = JSON.stringify(edge || {
+      const edgeDetails = edge || {
         from: cubesById.get(fromId) || fromId,
         to: cubesById.get(toId) || toId,
-      }, null, 2);
+      };
+      currentDetailsJson = JSON.stringify(edgeDetails, null, 2);
+      detailsSummary.replaceChildren();
+      const description = document.createElement("p");
+      description.textContent = `${cubesById.get(fromId)?.name || fromId} → ${cubesById.get(toId)?.name || toId}`;
+      detailsSummary.appendChild(description);
+      const provenance = edge?.procedures ?? [];
+      if (provenance.length) {
+        const heading = document.createElement("h3");
+        heading.textContent = `Procedures (${provenance.length})`;
+        const list = document.createElement("ul");
+        for (const procedure of provenance) {
+          const item = document.createElement("li");
+          item.textContent = procedure.description || "Unnamed procedure";
+          list.appendChild(item);
+        }
+        detailsSummary.append(heading, list);
+      }
     });
     cubeGraphNetwork = network;
   } catch (error) {
@@ -663,19 +805,24 @@ async function renderProcedureGraph(selectedProcedure, requestId, viewState) {
       const [selectedNodeId] = selectedNodes;
       const selectedProcedureNode = proceduresById.get(selectedNodeId);
       if (selectedProcedureNode) {
-        detailsHeading.textContent = `Procedure: ${procedureLabel(selectedProcedureNode)}`;
-        detailsOutput.textContent = JSON.stringify(selectedProcedureNode, null, 2);
+        void showProcedureUsageDetails(selectedProcedureNode);
         return;
       }
       const [edgeId] = selectedEdges;
       if (!edgeId) return;
       const [fromId, toId] = edgeId.split("->");
       const edge = procedureEdgesById.get(edgeId);
-      detailsHeading.textContent = "Procedure call edge";
-      detailsOutput.textContent = JSON.stringify(edge || {
+      selectionDetailsRequestId += 1;
+      const edgeDetails = edge || {
         from: proceduresById.get(fromId) || fromId,
         to: proceduresById.get(toId) || toId,
-      }, null, 2);
+      };
+      detailsHeading.textContent = "Procedure call edge";
+      currentDetailsJson = JSON.stringify(edgeDetails, null, 2);
+      detailsSummary.replaceChildren();
+      const description = document.createElement("p");
+      description.textContent = `${proceduresById.get(fromId)?.description || fromId} → ${proceduresById.get(toId)?.description || toId}`;
+      detailsSummary.appendChild(description);
     });
     cubeGraphNetwork = network;
   } catch (error) {

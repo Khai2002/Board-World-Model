@@ -163,21 +163,48 @@ code {
 }
 
 .graph-layout #cubeGraph {
-  flex: 4 1 0;
-  width: 80%;
+  order: 2;
+  flex: 7 1 0;
+  width: 75%;
   min-width: 0;
   margin-top: 0;
 }
 
 .graph-layout #graphSelectionDetails {
-  flex: 1 1 0;
-  width: 20%;
+  order: 1;
+  flex: 3 1 0;
+  width: 25%;
   min-width: 0;
   overflow: auto;
 }
 
 .graph-layout #graphSelectionDetails h2 {
   overflow-wrap: anywhere;
+}
+
+#detailsSummary p {
+  margin: 0 0 12px;
+}
+
+#detailsSummary h3 {
+  margin: 14px 0 4px;
+  font-size: 14px;
+}
+
+#detailsSummary ul {
+  margin: 4px 0 12px;
+  padding-left: 20px;
+}
+
+#detailsSummary li {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.graph-usage-detail {
+  display: block;
+  color: #5f6368;
+  font-size: 12px;
 }
 
 .vis-tooltip {
