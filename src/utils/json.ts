@@ -51,6 +51,17 @@ export type ProcedureMetadataJSON = {
   defaultDatabase: string
 }
 
+export type CapsuleProcedureJSON = Record<string, unknown> & {
+  name: string
+}
+
+export type CapsuleProcedureMetadataJSON = Record<string, unknown> & {
+  name: string
+  oldDescription?: string
+  description?: string
+  defaultDatabase?: string
+}
+
 export type ScreenMetadataJSON = {
   id: string,
 	type?: number,

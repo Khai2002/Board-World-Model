@@ -1,16 +1,21 @@
 const status = document.getElementById("status");
 const cubesList = document.getElementById("cubes");
-const exportButton = document.getElementById("exportButton");
-const importButton = document.getElementById("importButton");
-const importInput = document.getElementById("importInput");
-const modelSelect = document.getElementById("modelSelect");
-const deleteModelButton = document.getElementById("deleteModelButton");
+const cubeModelFilter = document.getElementById("cubeModelFilter");
+const cubeModelOptions = document.getElementById("cubeModelOptions");
+const cubeModelFilterSummary = document.getElementById("cubeModelFilterSummary");
+const clearCubeModelFilter = document.getElementById("clearCubeModelFilter");
+const procedureModelFilter = document.getElementById("procedureModelFilter");
+const procedureModelOptions = document.getElementById("procedureModelOptions");
+const procedureModelFilterSummary = document.getElementById("procedureModelFilterSummary");
+const clearProcedureModelFilter = document.getElementById("clearProcedureModelFilter");
 const deleteAllButton = document.getElementById("deleteAllButton");
 const cubesTab = document.getElementById("cubesTab");
 const proceduresTab = document.getElementById("proceduresTab");
+const capsuleProceduresTab = document.getElementById("capsuleProceduresTab");
 const capsulesTab = document.getElementById("capsulesTab");
 const cubesPanel = document.getElementById("cubesPanel");
 const proceduresPanel = document.getElementById("proceduresPanel");
+const capsuleProceduresPanel = document.getElementById("capsuleProceduresPanel");
 const capsulesPanel = document.getElementById("capsulesPanel");
 const tabs = document.querySelector(".tabs");
 const proceduresList = document.getElementById("procedures");
@@ -18,6 +23,9 @@ const cubeStorageSize = document.getElementById("cubeStorageSize");
 const procedureStorageSize = document.getElementById("procedureStorageSize");
 const cubeSearch = document.getElementById("cubeSearch");
 const procedureSearch = document.getElementById("procedureSearch");
+const capsuleProceduresList = document.getElementById("capsuleProcedures");
+const capsuleProcedureStorageSize = document.getElementById("capsuleProcedureStorageSize");
+const capsuleProcedureSearch = document.getElementById("capsuleProcedureSearch");
 const capsulesList = document.getElementById("capsules");
 const screensList = document.getElementById("screens");
 const capsuleStorageSize = document.getElementById("capsuleStorageSize");
@@ -142,10 +150,41 @@ function openProcedureDatabase() {
 }
 
 function setModelOptions(modelIds) {
-  modelSelect.replaceChildren(new Option("Select a model", ""));
+  const selectedModelIds = new Set(
+    [...cubeModelOptions.querySelectorAll("input:checked")]
+      .map(input => input.value),
+  );
+  cubeModelOptions.replaceChildren();
   for (const modelId of modelIds) {
-    modelSelect.appendChild(new Option(modelId, modelId));
+    const label = document.createElement("label");
+    label.className = "model-filter-option";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = modelId;
+    checkbox.checked = selectedModelIds.has(modelId);
+    label.append(checkbox, document.createTextNode(modelId));
+    cubeModelOptions.appendChild(label);
   }
+  updateCubeModelFilterSummary();
+}
+
+function setProcedureModelOptions(modelIds) {
+  const selectedModelIds = new Set(
+    [...procedureModelOptions.querySelectorAll("input:checked")]
+      .map(input => input.value),
+  );
+  procedureModelOptions.replaceChildren();
+  for (const modelId of modelIds) {
+    const label = document.createElement("label");
+    label.className = "model-filter-option";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = modelId;
+    checkbox.checked = selectedModelIds.has(modelId);
+    label.append(checkbox, document.createTextNode(modelId));
+    procedureModelOptions.appendChild(label);
+  }
+  updateProcedureModelFilterSummary();
 }
 
 function formatBytes(bytes) {
@@ -210,12 +249,15 @@ function showDetails(title, data, viewState) {
   detailsTab.setAttribute("aria-selected", "true");
   cubesTab.classList.remove("active");
   proceduresTab.classList.remove("active");
+  capsuleProceduresTab.classList.remove("active");
   capsulesTab.classList.remove("active");
   cubesTab.setAttribute("aria-selected", "false");
   proceduresTab.setAttribute("aria-selected", "false");
+  capsuleProceduresTab.setAttribute("aria-selected", "false");
   capsulesTab.setAttribute("aria-selected", "false");
   cubesPanel.hidden = true;
   proceduresPanel.hidden = true;
+  capsuleProceduresPanel.hidden = true;
   capsulesPanel.hidden = true;
   detailsPanel.hidden = false;
   graphOutput.hidden = !graphData;
@@ -864,51 +906,51 @@ async function selectScreen(screen) {
 }
 
 copyDetailsButton.addEventListener("click", copyDetailsJson);
-cubeSearch.addEventListener("input", () => filterList(cubesList, cubeSearch.value));
-procedureSearch.addEventListener("input", () => filterList(proceduresList, procedureSearch.value));
+cubeSearch.addEventListener("input", filterCubes);
+cubeModelOptions.addEventListener("change", () => {
+  updateCubeModelFilterSummary();
+  filterCubes();
+});
+procedureSearch.addEventListener("input", filterProcedures);
+procedureModelOptions.addEventListener("change", () => {
+  updateProcedureModelFilterSummary();
+  filterProcedures();
+});
+clearCubeModelFilter.addEventListener("click", () => {
+  cubeModelOptions.querySelectorAll("input:checked").forEach(input => {
+    input.checked = false;
+  });
+  updateCubeModelFilterSummary();
+  filterCubes();
+});
+clearProcedureModelFilter.addEventListener("click", () => {
+  procedureModelOptions.querySelectorAll("input:checked").forEach(input => {
+    input.checked = false;
+  });
+  updateProcedureModelFilterSummary();
+  filterProcedures();
+});
+document.addEventListener("pointerdown", event => {
+  if (!cubeModelFilter.contains(event.target)) {
+    cubeModelFilter.open = false;
+  }
+  if (!procedureModelFilter.contains(event.target)) {
+    procedureModelFilter.open = false;
+  }
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && cubeModelFilter.open) {
+    cubeModelFilter.open = false;
+    cubeModelFilter.querySelector("summary").focus();
+  }
+  if (event.key === "Escape" && procedureModelFilter.open) {
+    procedureModelFilter.open = false;
+    procedureModelFilter.querySelector("summary").focus();
+  }
+});
+capsuleProcedureSearch.addEventListener("input", () => filterList(capsuleProceduresList, capsuleProcedureSearch.value));
 capsuleSearch.addEventListener("input", () => filterList(capsulesList, capsuleSearch.value));
 screenSearch.addEventListener("input", () => filterList(screensList, screenSearch.value));
-
-async function getBackup() {
-  const db = openCubeDatabase();
-  return {
-    cubes: await db.cubes.toArray(),
-    cubeEdges: await db.cubeEdges.toArray(),
-  };
-}
-
-function downloadJson(data, filename) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function parseBackup(value) {
-  if (!value || typeof value !== "object" || !Array.isArray(value.cubes) || !Array.isArray(value.cubeEdges)) {
-    throw new Error("The file is not a cube-model backup.");
-  }
-
-  for (const cube of value.cubes) {
-    if (!cube || typeof cube !== "object" || typeof cube.id !== "string" ||
-        typeof cube.modelId !== "string" || cube.cubeId === undefined || !("data" in cube)) {
-      throw new Error("The backup contains an invalid cube row.");
-    }
-  }
-
-  for (const edge of value.cubeEdges) {
-    if (!edge || typeof edge !== "object" ||
-        typeof edge.fromModelId !== "string" || edge.fromCubeId === undefined ||
-        typeof edge.toModelId !== "string" || edge.toCubeId === undefined) {
-      throw new Error("The backup contains an invalid cube relationship.");
-    }
-  }
-
-  return value;
-}
 
 async function loadCubes() {
   try {
@@ -922,9 +964,9 @@ async function loadCubes() {
     cubesList.replaceChildren();
     setModelOptions(modelIds);
     cubeStorageSize.textContent = `Estimated stored data: ${formatBytes(estimateBytes([...cubes, ...cubeEdges]))}`;
-    status.textContent = `${cubes.length} cube${cubes.length === 1 ? "" : "s"} stored`;
     for (const cube of cubes) {
       const item = document.createElement("li");
+      item.dataset.modelId = cube.modelId;
       item.dataset.search = [cube.name, cube.modelId, cube.cubeId, `${cube.modelId}:${cube.cubeId}`]
         .join(" ")
         .toLowerCase();
@@ -942,10 +984,77 @@ async function loadCubes() {
       }));
       cubesList.appendChild(item);
     }
-    filterList(cubesList, cubeSearch.value);
+    filterCubes();
   } catch (error) {
     status.textContent = `Could not read cube database: ${error.message}`;
   }
+}
+
+function filterCubes() {
+  const selectedModelIds = new Set(
+    [...cubeModelOptions.querySelectorAll("input:checked")]
+      .map(input => input.value),
+  );
+  const normalizedQuery = cubeSearch.value.trim().toLowerCase();
+  let visibleCount = 0;
+  for (const item of cubesList.children) {
+    const matchesModel = selectedModelIds.size === 0 ||
+      selectedModelIds.has(item.dataset.modelId);
+    const matchesSearch = normalizedQuery === "" ||
+      item.dataset.search.includes(normalizedQuery);
+    item.hidden = !matchesModel || !matchesSearch;
+    if (!item.hidden) visibleCount += 1;
+  }
+
+  const selectedCount = selectedModelIds.size;
+  const modelSummary = selectedCount === 0
+    ? "all models"
+    : `${selectedCount} model${selectedCount === 1 ? "" : "s"} selected`;
+  status.textContent = `${visibleCount} of ${cubesList.children.length} cubes shown · ${modelSummary}`;
+}
+
+function updateCubeModelFilterSummary() {
+  const selectedModelIds = [...cubeModelOptions.querySelectorAll("input:checked")]
+    .map(input => input.value);
+  cubeModelFilterSummary.textContent = selectedModelIds.length === 0
+    ? "All data models"
+    : selectedModelIds.length === 1
+      ? selectedModelIds[0]
+      : `${selectedModelIds.length} data models selected`;
+  clearCubeModelFilter.hidden = selectedModelIds.length === 0;
+}
+
+function filterProcedures() {
+  const selectedModelIds = new Set(
+    [...procedureModelOptions.querySelectorAll("input:checked")]
+      .map(input => input.value),
+  );
+  const normalizedQuery = procedureSearch.value.trim().toLowerCase();
+  let visibleCount = 0;
+  for (const item of proceduresList.children) {
+    const matchesModel = selectedModelIds.size === 0 ||
+      selectedModelIds.has(item.dataset.modelId);
+    const matchesSearch = normalizedQuery === "" ||
+      item.dataset.search.includes(normalizedQuery);
+    item.hidden = !matchesModel || !matchesSearch;
+    if (!item.hidden) visibleCount += 1;
+  }
+
+  const modelSummary = selectedModelIds.size === 0
+    ? "all models"
+    : `${selectedModelIds.size} model${selectedModelIds.size === 1 ? "" : "s"} selected`;
+  status.textContent = `${visibleCount} of ${proceduresList.children.length} procedures shown · ${modelSummary}`;
+}
+
+function updateProcedureModelFilterSummary() {
+  const selectedModelIds = [...procedureModelOptions.querySelectorAll("input:checked")]
+    .map(input => input.value);
+  procedureModelFilterSummary.textContent = selectedModelIds.length === 0
+    ? "All data models"
+    : selectedModelIds.length === 1
+      ? selectedModelIds[0]
+      : `${selectedModelIds.length} data models selected`;
+  clearProcedureModelFilter.hidden = selectedModelIds.length === 0;
 }
 
 async function loadProcedures() {
@@ -957,12 +1066,15 @@ async function loadProcedures() {
       db.procedureEdges.toArray(),
     ]);
     const detailIds = new Set(details.map(procedure => procedure.id));
+    const modelIds = [...new Set(metadata.map(procedure => procedure.defaultDatabase))].sort();
 
     proceduresList.replaceChildren();
+    setProcedureModelOptions(modelIds);
     procedureStorageSize.textContent = `Estimated stored data: ${formatBytes(estimateBytes([...metadata, ...details]))}`;
     status.textContent = `${metadata.length} procedure${metadata.length === 1 ? "" : "s"} stored · ${details.length} detailed`;
     for (const procedure of metadata.sort((left, right) => left.description.localeCompare(right.description))) {
       const item = document.createElement("li");
+      item.dataset.modelId = procedure.defaultDatabase;
       item.dataset.search = [
         procedure.description,
         procedure.name,
@@ -994,7 +1106,7 @@ async function loadProcedures() {
       ));
       proceduresList.appendChild(item);
     }
-    filterList(proceduresList, procedureSearch.value);
+    filterProcedures();
   } catch (error) {
     status.textContent = `Could not read procedure database: ${error.message}`;
   }
@@ -1067,103 +1179,105 @@ async function loadCapsulesAndScreens() {
   }
 }
 
+async function loadCapsuleProcedures() {
+  try {
+    const db = window.BoardWorldModel.openCapsuleProcedureDatabase();
+    const [metadata, details] = await Promise.all([
+      db.procedureMetadata.toArray(),
+      db.procedures.toArray(),
+    ]);
+    const detailsById = new Map(details.map(procedure => [procedure.id, procedure]));
+    capsuleProceduresList.replaceChildren();
+    capsuleProcedureStorageSize.textContent =
+      `Estimated stored data: ${formatBytes(estimateBytes([...metadata, ...details]))}`;
+    status.textContent =
+      `${metadata.length} capsule procedure${metadata.length === 1 ? "" : "s"} stored · ${details.length} detailed`;
+
+    for (const procedure of metadata.sort((left, right) =>
+      (left.description || left.name).localeCompare(right.description || right.name))) {
+      const item = document.createElement("li");
+      item.dataset.search = [
+        procedure.description,
+        procedure.oldDescription,
+        procedure.name,
+        procedure.capsulePath,
+        procedure.id,
+      ].filter(Boolean).join(" ").toLowerCase();
+      item.textContent = `${procedure.description || procedure.oldDescription || "Unnamed capsule procedure"} `;
+      const id = document.createElement("code");
+      id.textContent = `(${procedure.name})`;
+      item.appendChild(id);
+      const detail = detailsById.get(procedure.id);
+      const detailState = document.createElement("span");
+      detailState.textContent = detail ? " · details loaded" : " · metadata only";
+      item.appendChild(detailState);
+      const capsulePath = document.createElement("div");
+      capsulePath.textContent = procedure.capsulePath;
+      item.appendChild(capsulePath);
+      makeClickableItem(item, () => showDetails(
+        `Capsule procedure: ${procedure.description || procedure.name}`,
+        { metadata: procedure, details: detail ?? null },
+      ));
+      capsuleProceduresList.appendChild(item);
+    }
+
+    if (metadata.length === 0) {
+      const empty = document.createElement("li");
+      empty.textContent = "No capsule procedures stored";
+      empty.dataset.search = "";
+      capsuleProceduresList.appendChild(empty);
+    }
+    filterList(capsuleProceduresList, capsuleProcedureSearch.value);
+  } catch (error) {
+    status.textContent = `Could not read capsule procedure database: ${error.message}`;
+  }
+}
+
 function showTab(tab) {
   const showCubes = tab === "cubes";
   const showProcedures = tab === "procedures";
+  const showCapsuleProcedures = tab === "capsuleProcedures";
   const showCapsules = tab === "capsules";
   cubesTab.classList.toggle("active", showCubes);
   proceduresTab.classList.toggle("active", showProcedures);
+  capsuleProceduresTab.classList.toggle("active", showCapsuleProcedures);
   capsulesTab.classList.toggle("active", showCapsules);
   detailsTab.classList.remove("active");
   cubesTab.setAttribute("aria-selected", String(showCubes));
   proceduresTab.setAttribute("aria-selected", String(showProcedures));
+  capsuleProceduresTab.setAttribute("aria-selected", String(showCapsuleProcedures));
   capsulesTab.setAttribute("aria-selected", String(showCapsules));
   detailsTab.setAttribute("aria-selected", "false");
   cubesPanel.hidden = !showCubes;
   proceduresPanel.hidden = !showProcedures;
+  capsuleProceduresPanel.hidden = !showCapsuleProcedures;
   capsulesPanel.hidden = !showCapsules;
   detailsPanel.hidden = true;
   if (showProcedures) loadProcedures();
+  else if (showCapsuleProcedures) loadCapsuleProcedures();
   else if (showCapsules) loadCapsulesAndScreens();
   else loadCubes();
 }
 
-async function exportData() {
-  try {
-    downloadJson(await getBackup(), "cube-model-backup.json");
-  } catch (error) {
-    status.textContent = `Could not export cube database: ${error.message}`;
-  }
-}
-
-async function importData(file) {
-  try {
-    const backup = parseBackup(JSON.parse(await file.text()));
-    if (!confirm("Replace all local cube data with this backup? This cannot be undone.")) return;
-
-    const db = openCubeDatabase();
-    await db.transaction("rw", db.cubes, db.cubeEdges, async () => {
-      await db.cubes.clear();
-      await db.cubeEdges.clear();
-      await db.cubes.bulkPut(backup.cubes);
-      await db.cubeEdges.bulkPut(backup.cubeEdges);
-    });
-    await loadCubes();
-    status.textContent = `Imported ${backup.cubes.length} cube${backup.cubes.length === 1 ? "" : "s"}`;
-  } catch (error) {
-    status.textContent = `Could not import cube database: ${error.message}`;
-  } finally {
-    importInput.value = "";
-  }
-}
-
-async function deleteSelectedModel() {
-  const modelId = modelSelect.value;
-  if (!modelId) return;
-  if (!confirm(`Delete all local cubes and relationships for ${modelId}?`)) return;
-
-  try {
-    const db = openCubeDatabase();
-    await db.transaction("rw", db.cubes, db.cubeEdges, async () => {
-      await db.cubes.where("modelId").equals(modelId).delete();
-      await db.cubeEdges
-        .where("fromModelId").equals(modelId)
-        .or("toModelId").equals(modelId)
-        .delete();
-    });
-    await loadCubes();
-  } catch (error) {
-    status.textContent = `Could not delete model: ${error.message}`;
-  }
-}
-
 async function deleteAllData() {
-  if (!confirm("Delete all locally stored cubes, relationships, procedures, capsules, and screens? This cannot be undone.")) return;
+  if (!confirm("Delete all locally stored cubes, relationships, procedures, capsule procedures, capsules, and screens? This cannot be undone.")) return;
 
   try {
     await Promise.all([
       openCubeDatabase().delete(),
       openProcedureDatabase().delete(),
+      window.BoardWorldModel.openCapsuleProcedureDatabase().delete(),
       window.BoardWorldModel.openScreenDatabase().delete(),
     ]);
-    await Promise.all([loadCubes(), loadProcedures(), loadCapsulesAndScreens()]);
+    await Promise.all([loadCubes(), loadProcedures(), loadCapsuleProcedures(), loadCapsulesAndScreens()]);
   } catch (error) {
     status.textContent = `Could not delete cube database: ${error.message}`;
   }
 }
 
-exportButton.addEventListener("click", exportData);
-importButton.addEventListener("click", () => importInput.click());
-document.getElementById("printTestButton").addEventListener("click", () => {
-  window.BoardWorldModel.printTest();
-});
-importInput.addEventListener("change", () => {
-  const [file] = importInput.files;
-  if (file) importData(file);
-});
-deleteModelButton.addEventListener("click", deleteSelectedModel);
 deleteAllButton.addEventListener("click", deleteAllData);
 cubesTab.addEventListener("click", () => showTab("cubes"));
 proceduresTab.addEventListener("click", () => showTab("procedures"));
+capsuleProceduresTab.addEventListener("click", () => showTab("capsuleProcedures"));
 capsulesTab.addEventListener("click", () => showTab("capsules"));
 loadCubes();

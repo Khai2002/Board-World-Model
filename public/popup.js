@@ -17,6 +17,7 @@ document.getElementById("btnDashboard").addEventListener("click", () => {
 
 const PROCEDURE_BATCH_SIZE = 10;
 const SCREEN_DETAIL_BATCH_SIZE = 10;
+const CAPSULE_PROCEDURE_BATCH_SIZE = 10;
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -74,8 +75,11 @@ function collectCapsules(nodes) {
 
 async function scanCapsules(capsules) {
   const scans = [];
+  const procedureScans = [];
   let screenCount = 0;
   let detailCount = 0;
+  let procedureCount = 0;
+  let procedureDetailCount = 0;
 
   for (const [index, capsule] of capsules.entries()) {
     modelLine.textContent = `Scanning ${index + 1}/${capsules.length}: ${capsule.name}`;
@@ -130,14 +134,69 @@ async function scanCapsules(capsules) {
 
     screenCount += screens.length;
     scans.push({ capsule, sitemap, screenDetails });
+
+    const metadataResponse = await sendToContentScript({
+      type: "CALL",
+      endpoint: "getCapsuleCoreProcedures",
+      params: { path: capsule.path },
+    });
+    if (!metadataResponse?.success) {
+      throw new Error(
+        metadataResponse?.error || `Could not get capsule procedures for ${capsule.path}.`,
+      );
+    }
+
+    const metadata = normalizeProcedureList(metadataResponse.result.data);
+    if (metadata.some((procedure) => typeof procedure?.name !== "string" || procedure.name.length === 0)) {
+      throw new Error(`Capsule procedure metadata for ${capsule.path} contains an invalid name.`);
+    }
+    const procedures = [];
+    for (let procedureIndex = 0; procedureIndex < metadata.length; procedureIndex += CAPSULE_PROCEDURE_BATCH_SIZE) {
+      const batch = metadata.slice(procedureIndex, procedureIndex + CAPSULE_PROCEDURE_BATCH_SIZE);
+      modelLine.textContent = `Loading capsule procedure details ${procedureDetailCount + 1}/${metadata.length}: ${capsule.name}`;
+      const detailsResponse = await sendToContentScript({
+        type: "CALL",
+        endpoint: "getCapsuleProcedures",
+        params: { path: capsule.path },
+        body: batch.map((procedure) => procedure.name),
+      });
+      if (!detailsResponse?.success) {
+        throw new Error(
+          detailsResponse?.error ||
+          `Could not get capsule procedure details for ${capsule.path} (batch ${Math.floor(procedureIndex / CAPSULE_PROCEDURE_BATCH_SIZE) + 1}).`,
+        );
+      }
+
+      const batchDetails = normalizeProcedureDetails(detailsResponse.result.data);
+      if (batchDetails.length !== batch.length) {
+        throw new Error(
+          `Capsule procedure details for ${capsule.path} returned ${batchDetails.length} records for ${batch.length} requested procedures.`,
+        );
+      }
+      const requestedNames = new Set(batch.map((procedure) => procedure.name));
+      const returnedNames = new Set(batchDetails.map((procedure) => procedure.name));
+      if (
+        batchDetails.some((procedure) => typeof procedure.name !== "string" || !requestedNames.has(procedure.name)) ||
+        returnedNames.size !== requestedNames.size
+      ) {
+        throw new Error(`Capsule procedure details for ${capsule.path} did not match the requested procedure names.`);
+      }
+      procedures.push(...batchDetails);
+      procedureDetailCount += batchDetails.length;
+    }
+
+    procedureCount += metadata.length;
+    procedureScans.push({ capsulePath: capsule.path, metadata, procedures });
   }
 
   const database = window.BoardWorldModel.openScreenDatabase();
   await database.saveScannedCapsules(scans);
-  modelLine.textContent = `${capsules.length} capsules · ${screenCount} screens stored`;
+  await window.BoardWorldModel.openCapsuleProcedureDatabase()
+    .saveScannedCapsules(procedureScans);
+  modelLine.textContent = `${capsules.length} capsules · ${screenCount} screens · ${procedureCount} capsule procedures stored`;
   output.className = "";
   output.textContent = JSON.stringify(capsules, null, 2);
-  meta.textContent = `${detailCount} screen details saved with capsule and sitemap data`;
+  meta.textContent = `${detailCount} screen details and ${procedureDetailCount} capsule procedure details saved`;
 }
 
 function chooseCapsules(tree, capsules) {

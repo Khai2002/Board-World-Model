@@ -14,27 +14,43 @@
   <div class="tabs" role="tablist" aria-label="Stored data">
     <button class="tab active" id="cubesTab" type="button" role="tab" aria-selected="true">Cubes</button>
     <button class="tab" id="proceduresTab" type="button" role="tab" aria-selected="false">Procedures</button>
+    <button class="tab" id="capsuleProceduresTab" type="button" role="tab" aria-selected="false">Capsule Procedures</button>
     <button class="tab" id="capsulesTab" type="button" role="tab" aria-selected="false">Capsules &amp; Screens</button>
   </div>
   <section class="tab-panel" id="cubesPanel" role="tabpanel">
-    <div class="actions">
-      <button id="exportButton" type="button">Export JSON</button>
-      <button id="importButton" type="button">Import JSON</button>
-      <button id="printTestButton" type="button">Test print</button>
-      <input id="importInput" type="file" accept="application/json,.json" hidden>
-      <select id="modelSelect" aria-label="Model to delete">
-        <option value="">Select a model</option>
-      </select>
-      <button id="deleteModelButton" type="button">Delete selected model</button>
+    <div class="model-filter">
+      <span class="model-filter-label">Filter by data model</span>
+      <details id="cubeModelFilter">
+        <summary id="cubeModelFilterSummary">All data models</summary>
+        <div class="model-filter-menu">
+          <div id="cubeModelOptions"></div>
+          <button id="clearCubeModelFilter" type="button">Clear selection</button>
+        </div>
+      </details>
     </div>
     <p id="cubeStorageSize" class="storage-size"></p>
     <input id="cubeSearch" class="search" type="search" placeholder="Search cubes" aria-label="Search cubes">
     <ul id="cubes"></ul>
   </section>
   <section class="tab-panel" id="proceduresPanel" role="tabpanel" hidden>
+    <div class="model-filter">
+      <span class="model-filter-label">Filter by data model</span>
+      <details id="procedureModelFilter">
+        <summary id="procedureModelFilterSummary">All data models</summary>
+        <div class="model-filter-menu">
+          <div id="procedureModelOptions"></div>
+          <button id="clearProcedureModelFilter" type="button">Clear selection</button>
+        </div>
+      </details>
+    </div>
     <p id="procedureStorageSize" class="storage-size"></p>
     <input id="procedureSearch" class="search" type="search" placeholder="Search procedures" aria-label="Search procedures">
     <ul id="procedures"></ul>
+  </section>
+  <section class="tab-panel" id="capsuleProceduresPanel" role="tabpanel" hidden>
+    <p id="capsuleProcedureStorageSize" class="storage-size"></p>
+    <input id="capsuleProcedureSearch" class="search" type="search" placeholder="Search capsule procedures" aria-label="Search capsule procedures">
+    <ul id="capsuleProcedures"></ul>
   </section>
   <section class="tab-panel" id="capsulesPanel" role="tabpanel" hidden>
     <div class="capsule-columns">
