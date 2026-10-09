@@ -149,6 +149,10 @@ function openProcedureDatabase() {
   return window.BoardWorldModel.openProcedureDatabase();
 }
 
+function openLinkDatabase() {
+  return window.BoardWorldModel.openLinkDatabase();
+}
+
 function setModelOptions(modelIds) {
   const selectedModelIds = new Set(
     [...cubeModelOptions.querySelectorAll("input:checked")]
@@ -355,7 +359,7 @@ function renderUsageCategories(description, categories) {
   const total = categories.reduce((count, category) => count + category.items.length, 0);
   if (total === 0) {
     const emptyState = document.createElement("p");
-    emptyState.textContent = "No recorded procedure-cube relations. Use Generate all edges in the popup to build them.";
+    emptyState.textContent = "No recorded procedure-cube links. Use Create all edges in the popup to build them.";
     detailsSummary.appendChild(emptyState);
   }
 
@@ -387,9 +391,10 @@ async function showCubeUsageDetails(cube) {
   detailsHeading.textContent = `Cube: ${cubeLabel(cube)}`;
   currentDetailsJson = JSON.stringify(cube, null, 2);
   try {
+    const linkDb = openLinkDatabase();
     const procedureDb = openProcedureDatabase();
     const [uses, procedures, metadata] = await Promise.all([
-      procedureDb.procedureCubeUses.where("cubeRecordId").equals(cubeId).toArray(),
+      linkDb.links.where("[dstType+dstId+kind]").equals(["cube", cubeId, "usesCube"]).toArray(),
       procedureDb.procedures.toArray(),
       procedureDb.procedureMetadata.toArray(),
     ]);
@@ -400,12 +405,14 @@ async function showCubeUsageDetails(cube) {
     const metadataById = new Map(metadata.map(procedure => [procedure.id, procedure]));
     const categorized = { read: [], write: [], readwrite: [] };
     for (const use of uses) {
-      const procedure = proceduresById.get(use.procedureId);
-      const procedureMetadata = metadataById.get(use.procedureId);
-      const description = procedure?.description || procedureMetadata?.description || "Unnamed procedure";
-      categorized[use.mode]?.push({
+      const procedure = proceduresById.get(use.srcId);
+      const procedureMetadata = metadataById.get(use.srcId);
+      const description = procedure?.description || procedure?.oldDescription ||
+        procedureMetadata?.description || procedureMetadata?.oldDescription ||
+        procedure?.name || procedureMetadata?.name || "Unnamed procedure";
+      categorized[use.meta?.access]?.push({
         label: description,
-        detail: use.procedureDefaultDatabase,
+        detail: use.ownerId,
       });
     }
 
@@ -428,19 +435,20 @@ async function showProcedureUsageDetails(procedure) {
   detailsHeading.textContent = `Procedure: ${procedureLabel(procedure)}`;
   currentDetailsJson = JSON.stringify(procedure, null, 2);
   try {
+    const linkDb = openLinkDatabase();
     const procedureDb = openProcedureDatabase();
     const cubeDb = openCubeDatabase();
     const [uses, cubes] = await Promise.all([
-      procedureDb.procedureCubeUses.where("procedureId").equals(procedureId).toArray(),
+      linkDb.links.where("[srcType+srcId+kind]").equals(["procedure", procedureId, "usesCube"]).toArray(),
       cubeDb.cubes.toArray(),
     ]);
     const cubesById = new Map(cubes.map(cube => [cube.id, cube]));
     const categorized = { read: [], write: [], readwrite: [] };
     for (const use of uses) {
-      const cube = cubesById.get(use.cubeRecordId);
-      categorized[use.mode]?.push({
+      const cube = cubesById.get(use.dstId);
+      categorized[use.meta?.access]?.push({
         label: cube?.name || "Unnamed cube",
-        detail: `${use.cubeModelId}:${use.cubeIdx}`,
+        detail: use.dstId,
       });
     }
 
@@ -503,14 +511,21 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
   graphOutput.textContent = "Loading graph...";
   try {
     const db = openCubeDatabase();
-    const [cubes, cubeEdges, graph] = await Promise.all([
+    const [cubes, cubeEdges, procedures, procedureMetadata, graph] = await Promise.all([
       db.cubes.toArray(),
       db.cubeEdges.toArray(),
+      openProcedureDatabase().procedures.toArray(),
+      openProcedureDatabase().procedureMetadata.toArray(),
       window.BoardWorldModel.loadCubeGraphWrapper(),
     ]);
     if (requestId !== graphRequestId) return;
 
     const cubesById = new Map(cubes.map(cube => [cubeNodeId(cube.modelId, cube.cubeId), cube]));
+    const procedureLabelsById = new Map();
+    for (const procedure of [...procedures, ...procedureMetadata]) {
+      const label = procedure.description || procedure.oldDescription || procedure.name;
+      if (label) procedureLabelsById.set(procedure.id, label);
+    }
     const selectedId = cubeNodeId(selectedCube.modelId, selectedCube.cubeId);
     const levels = new Map([[selectedId, 0]]);
     const queue = [selectedId];
@@ -615,7 +630,7 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
           to,
           arrows: "to",
           title: procedures.length > 0
-            ? procedures.map(procedure => `${procedure.description || "Unnamed procedure"} (${procedure.id})`).join("\n")
+            ? procedures.map(procedure => `${procedure.description || procedureLabelsById.get(procedure.id) || procedure.id || "Unnamed procedure"} (${procedure.id})`).join("\n")
             : "No procedure provenance recorded",
         };
       })));
@@ -692,7 +707,7 @@ async function renderCubeGraph(selectedCube, requestId, viewState) {
         const list = document.createElement("ul");
         for (const procedure of provenance) {
           const item = document.createElement("li");
-          item.textContent = procedure.description || "Unnamed procedure";
+          item.textContent = procedure.description || procedureLabelsById.get(procedure.id) || procedure.id || "Unnamed procedure";
           list.appendChild(item);
         }
         detailsSummary.append(heading, list);
@@ -1266,6 +1281,7 @@ async function deleteAllData() {
     await Promise.all([
       openCubeDatabase().delete(),
       openProcedureDatabase().delete(),
+      openLinkDatabase().delete(),
       window.BoardWorldModel.openCapsuleProcedureDatabase().delete(),
       window.BoardWorldModel.openScreenDatabase().delete(),
     ]);

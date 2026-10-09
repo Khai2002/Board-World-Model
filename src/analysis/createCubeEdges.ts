@@ -13,7 +13,10 @@ export async function testCubeEdges(
   const cDb = new CubeDatabase();
 
   const procedureId: string = ProcedureDatabase.getId({name, defaultDatabase});
-  const procedureJSON: ProcedureRecord | undefined = await pDb.getDetailsById(procedureId);
+  const [procedureJSON, procedureMetadata] = await Promise.all([
+    pDb.getDetailsById(procedureId),
+    pDb.procedureMetadata.get(procedureId),
+  ]);
   
   if(!procedureJSON) {
       console.log(`Cannot find procedure with key ${procedureId}`);
@@ -23,7 +26,9 @@ export async function testCubeEdges(
   const procedure: Procedure = Procedure.fromJSON(procedureJSON);
   const procedureReference: CubeEdgeProcedure = {
     id: procedureId,
-    description: procedure.description,
+    description: procedure.description || procedure.oldDescription ||
+      procedureMetadata?.description || procedureMetadata?.oldDescription ||
+      procedure.name || procedureMetadata?.name || procedureId,
   };
 
   const dataflows = await Promise.all(procedure.getStepsByType(DataflowStep)

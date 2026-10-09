@@ -92,7 +92,7 @@ const RESOURCES = {
     layoutEditorBlocksAnalysis: { url: "/api/LayoutEditor/GetCubeBlocksAnalysis?controlId={controlId}&cpsPath=PROCEDURE_STEP_CAPSULE_PATH&screenId={screenId}", method: "POST" },
     layoutEditorUpdateLayout: { url: "/api/LayoutEditor/UpdateProcedureLayoutState?controlId={controlId}&cpsPath=PROCEDURE_STEP_CAPSULE_PATH&screenId={screenId}&updatePreview=false&isDatabaseStep=true&procedurePath={dbname}&procedureName={procedureId}", method: "POST" },
     layoutEditorApplyDFLayout: { url: "/api/ActionConfigurator/UpdateConfiguredDataFlowLayout", method: "POST" },
-    layoutEditorProcedureGetBlockLayout: { url: "/api/ActionConfigurator/ProcedureGetBlockArgs?path={dbname}&procedureName={procedureId}&procedureTypeDto=1&actionGuid={actionId}&areNotSavedItems={isNotSaved}&useVirtualCubes=true", method: "GET" },
+    layoutEditorProcedureGetBlockLayout: { url: "/api/ActionConfigurator/ProcedureGetBlockArgs?path={dbname}&procedureName={procedureId}&procedureTypeDto={procedureType}&actionGuid={actionId}&areNotSavedItems={isNotSaved}&useVirtualCubes=true", method: "GET" },
   },
   "14.2": {
     getElementList: { url: "/api/EntitiesManager/GetElementList?dbName={dbname}&entityIdx={uniqueId}&page={page}", method: "GET" },

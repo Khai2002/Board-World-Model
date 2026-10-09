@@ -20,25 +20,11 @@ export type ProcedureEdge = {
     toDefaultDatabase: string
 }
 
-export type ProcedureCubeUseMode = "read" | "write" | "readwrite"
-
-/** A procedure's read/write relationship with a real cube. */
-export type ProcedureCubeUse = {
-    id: string
-    procedureId: string
-    procedureDefaultDatabase: string
-    cubeRecordId: string
-    cubeModelId: string
-    cubeIdx: string | number
-    mode: ProcedureCubeUseMode
-}
-
 /** Persistent storage for procedure metadata and detailed definitions. */
 export default class ProcedureDatabase extends Dexie {
     procedureMetadata!: EntityTable<ProcedureMetadata, "id">
     procedures!: EntityTable<ProcedureRecord, "id">
     procedureEdges!: EntityTable<ProcedureEdge, "id">
-    procedureCubeUses!: EntityTable<ProcedureCubeUse, "id">
 
     static getId(procedure: Pick<ProcedureMetadataJSON, "name" | "defaultDatabase">): string {
         return `${procedure.defaultDatabase}:${procedure.name}`
@@ -49,10 +35,6 @@ export default class ProcedureDatabase extends Dexie {
         to: Pick<ProcedureMetadataJSON, "name" | "defaultDatabase">,
     ): string {
         return `${ProcedureDatabase.getId(from)}->${ProcedureDatabase.getId(to)}`
-    }
-
-    static getCubeUseId(procedureId: string, cubeRecordId: string): string {
-        return `${procedureId}->${cubeRecordId}`
     }
 
     constructor(name = "procedure-model") {
@@ -74,6 +56,13 @@ export default class ProcedureDatabase extends Dexie {
             procedures: "&id, name, defaultDatabase, [defaultDatabase+name]",
             procedureEdges: "&id, fromName, fromDefaultDatabase, toName, toDefaultDatabase, [fromDefaultDatabase+fromName], [toDefaultDatabase+toName], [fromDefaultDatabase+fromName+toDefaultDatabase+toName]",
             procedureCubeUses: "&id, procedureId, procedureDefaultDatabase, cubeRecordId, cubeModelId, [cubeModelId+cubeIdx]",
+        })
+
+        this.version(4).stores({
+            procedureMetadata: "&id, name, defaultDatabase, [defaultDatabase+name]",
+            procedures: "&id, name, defaultDatabase, [defaultDatabase+name]",
+            procedureEdges: "&id, fromName, fromDefaultDatabase, toName, toDefaultDatabase, [fromDefaultDatabase+fromName], [toDefaultDatabase+toName], [fromDefaultDatabase+fromName+toDefaultDatabase+toName]",
+            procedureCubeUses: null,
         })
     }
 

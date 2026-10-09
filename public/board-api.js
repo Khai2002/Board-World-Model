@@ -85,14 +85,38 @@ class BoardApiClient {
       throw new Error('The procedure response is empty.');
     }
 
+    return this.loadProcedureLayouts(modelId, procedure, procedureId);
+  }
+
+  async getCapsuleProcedureDetails(capsulePath, procedureNames) {
+    const { data } = await this.request(
+      'getCapsuleProcedures',
+      { path: capsulePath },
+      procedureNames,
+    );
+    const procedures = Array.isArray(data) ? data
+      : Array.isArray(data?.items) ? data.items
+        : Array.isArray(data?.procedures) ? data.procedures
+          : Array.isArray(data?.procedure) ? data.procedure
+            : data?.procedure && typeof data.procedure === 'object' ? [data.procedure]
+              : data && typeof data === 'object' ? [data]
+                : [];
+
+    return Promise.all(procedures.map((procedure) =>
+      this.loadProcedureLayouts(capsulePath, procedure, procedure.name, 0)
+    ));
+  }
+
+  async loadProcedureLayouts(procedurePath, procedure, procedureId, procedureType = 1) {
     const procedureGroups = await Promise.all(
       (procedure.procedureGroups ?? []).map(async (group) => ({
         ...group,
         steps: await Promise.all(
           (group.steps ?? []).map((step) => this.loadProcedureStepLayout(
-            modelId,
+            procedurePath,
             procedureId,
             step,
+            procedureType,
           )),
         ),
       })),
@@ -101,7 +125,7 @@ class BoardApiClient {
     return { ...procedure, procedureGroups };
   }
 
-  async loadProcedureStepLayout(modelId, procedureId, step) {
+  async loadProcedureStepLayout(modelId, procedureId, step, procedureType) {
     if (!Array.isArray(step.configuredLayoutIds) || step.configuredLayoutIds.length === 0) {
       return step;
     }
@@ -111,6 +135,7 @@ class BoardApiClient {
       {
         dbname: modelId,
         procedureId,
+        procedureType,
         actionId: step.id,
         isNotSaved: false,
       },

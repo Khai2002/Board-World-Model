@@ -40,6 +40,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "GET_CAPSULE_PROCEDURES_FULL") {
+    boardApi.getCapsuleProcedureDetails(message.capsulePath, message.procedureNames)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) =>
+        sendResponse({
+          success: false,
+          error: err.message,
+          status: err.status,
+          body: err.body,
+        })
+      );
+    return true;
+  }
+
   return false;
 });
 

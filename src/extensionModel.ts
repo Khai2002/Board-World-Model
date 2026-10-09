@@ -7,6 +7,7 @@ import CubeDatabase from "./database/CubeDatabase"
 import ProcedureDatabase from "./database/ProcedureDatabase"
 import CapsuleProcedureDatabase from "./database/CapsuleProcedureDatabase"
 import ScreenDatabase from "./database/ScreenDatabase"
+import LinkDatabase from "./database/LinkDatabase"
 import { createCubeEdgesFromDataflow, testCubeEdges } from "./analysis/createCubeEdges"
 import { loadCubeGraph } from "./graph/cubeGraph"
 import { createProcedureEdgesFromCallProcedure } from "./analysis/createProcedureEdges"
@@ -74,6 +75,10 @@ export function openCapsuleProcedureDatabase(): CapsuleProcedureDatabase {
 
 export function openScreenDatabase(): ScreenDatabase {
     return new ScreenDatabase()
+}
+
+export function openLinkDatabase(): LinkDatabase {
+    return new LinkDatabase()
 }
 
 export function loadCubeGraphWrapper() {
@@ -224,6 +229,8 @@ declare global {
             loadProcedureGraphWrapper: typeof loadProcedureGraphWrapper
             openCubeDatabase: typeof openCubeDatabase
             openScreenDatabase: typeof openScreenDatabase
+            LinkDatabase: typeof LinkDatabase
+            openLinkDatabase: typeof openLinkDatabase
             ProcedureDatabase: typeof ProcedureDatabase
             openProcedureDatabase: typeof openProcedureDatabase
             CapsuleProcedureDatabase: typeof CapsuleProcedureDatabase
@@ -246,6 +253,8 @@ window.BoardWorldModel = {
     loadProcedureGraphWrapper,
     openCubeDatabase,
     openScreenDatabase,
+    LinkDatabase,
+    openLinkDatabase,
     ProcedureDatabase,
     openProcedureDatabase,
     CapsuleProcedureDatabase,

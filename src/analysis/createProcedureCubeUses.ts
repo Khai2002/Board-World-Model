@@ -1,9 +1,6 @@
 import CubeDatabase from "../database/CubeDatabase"
-import ProcedureDatabase, {
-    type ProcedureCubeUse,
-    type ProcedureCubeUseMode,
-    type ProcedureRecord,
-} from "../database/ProcedureDatabase"
+import LinkDatabase, { type Link, type LinkAccess } from "../database/LinkDatabase"
+import ProcedureDatabase, { type ProcedureRecord } from "../database/ProcedureDatabase"
 import Procedure from "../procedure/Procedure"
 import { resolveDataflowCubes } from "./resolveDataflowCubes"
 
@@ -12,6 +9,8 @@ export async function createProcedureCubeUsesFromDataflow(
     defaultDatabase: string,
 ): Promise<number> {
     const procedureDb = new ProcedureDatabase()
+    const linkDb = new LinkDatabase()
+
     const procedureId = ProcedureDatabase.getId({ name, defaultDatabase })
     const procedureJSON: ProcedureRecord | undefined = await procedureDb.getDetailsById(procedureId)
     if (!procedureJSON) {
@@ -34,24 +33,34 @@ export async function createProcedureCubeUsesFromDataflow(
         if (dataflow.targetCubeId !== undefined) addMode(dataflow.targetCubeId, "write")
     }
 
-    const uses: ProcedureCubeUse[] = [...modesByCube].map(([cubeIdx, modes]) => {
-        const cubeRecordId = CubeDatabase.getId(defaultDatabase, cubeIdx)
-        const mode: ProcedureCubeUseMode = modes.size > 1
+    const links: Link[] = [...modesByCube].map(([cubeIdx, modes]) => {
+        const cubeId = CubeDatabase.getId(defaultDatabase, cubeIdx)
+        const access: LinkAccess = modes.size > 1
             ? "readwrite"
             : modes.has("read") ? "read" : "write"
+        const link = {
+            srcType: "procedure" as const,
+            srcId: procedureId,
+            kind: "usesCube" as const,
+            dstType: "cube" as const,
+            dstId: cubeId,
+            ownerType: "database" as const,
+            ownerId: defaultDatabase,
+            meta: { access },
+        }
         return {
-            id: ProcedureDatabase.getCubeUseId(procedureId, cubeRecordId),
-            procedureId,
-            procedureDefaultDatabase: defaultDatabase,
-            cubeRecordId,
-            cubeModelId: defaultDatabase,
-            cubeIdx,
-            mode,
+            ...link,
+            id: LinkDatabase.getId(link),
         }
     })
 
-    if (uses.length > 0) {
-        await procedureDb.procedureCubeUses.bulkPut(uses)
-    }
-    return uses.length
+    await linkDb.replaceLinksForSource(
+        "database",
+        defaultDatabase,
+        "usesCube",
+        "procedure",
+        procedureId,
+        links,
+    )
+    return links.length
 }
