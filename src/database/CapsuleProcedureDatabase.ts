@@ -17,13 +17,37 @@ export type CapsuleProcedureScan = {
     procedures: CapsuleProcedureJSON[]
 }
 
+export type CapsuleProcedureIdentifier = {
+    name: string
+    capsulePath: string
+    defaultDatabase?: string
+}
+
+export type CapsuleProcedureEdge = {
+    id: string
+    fromCapsulePath: string
+    fromName: string
+    fromDefaultDatabase?: string
+    toCapsulePath: string
+    toName: string
+    toDefaultDatabase?: string
+}
+
 /** Persistent storage for capsule procedure metadata and detailed definitions. */
 export default class CapsuleProcedureDatabase extends Dexie {
     procedureMetadata!: EntityTable<CapsuleProcedureMetadata, "id">
     procedures!: EntityTable<CapsuleProcedureRecord, "id">
+    procedureEdges!: EntityTable<CapsuleProcedureEdge, "id">
 
     static getId(capsulePath: string, name: string): string {
         return `${capsulePath}:${name}`
+    }
+
+    static getEdgeId(
+        from: CapsuleProcedureIdentifier,
+        to: CapsuleProcedureIdentifier,
+    ): string {
+        return `${CapsuleProcedureDatabase.getId(from.capsulePath, from.name)}->${CapsuleProcedureDatabase.getId(to.capsulePath, to.name)}`
     }
 
     constructor(name = "capsule-procedure-model") {
@@ -32,6 +56,12 @@ export default class CapsuleProcedureDatabase extends Dexie {
         this.version(1).stores({
             procedureMetadata: "&id, capsulePath, name, [capsulePath+name]",
             procedures: "&id, capsulePath, name, [capsulePath+name]",
+        })
+
+        this.version(2).stores({
+            procedureMetadata: "&id, capsulePath, name, [capsulePath+name]",
+            procedures: "&id, capsulePath, name, [capsulePath+name]",
+            procedureEdges: "&id, fromCapsulePath, fromName, toCapsulePath, toName, [fromCapsulePath+fromName], [toCapsulePath+toName], [fromCapsulePath+fromName+toCapsulePath+toName]",
         })
     }
 

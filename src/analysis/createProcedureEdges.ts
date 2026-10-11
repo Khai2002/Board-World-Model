@@ -2,6 +2,11 @@ import Procedure from "../procedure/Procedure";
 import ProcedureDatabase, { type ProcedureEdge, type ProcedureRecord } from "../database/ProcedureDatabase";
 import CallProcedureStep from "../procedure/step/CallProcedureStep";
 
+/**
+ * Builds procedure-to-procedure edges for a single procedure by collecting every nested
+ * CallProcedureStep and storing the resulting relationships in the procedure edge database.
+ * Returns the number of edges created.
+ */
 export async function createProcedureEdgesFromCallProcedure(
     name: string,
     defaultDatabase: string,

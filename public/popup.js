@@ -486,8 +486,10 @@ async function createAllEdges(modelId) {
     const procedures = (await procedureDb.procedures.toArray()).filter(
       (procedure) => procedure.defaultDatabase === modelId,
     );
-    if (procedures.length === 0) {
-      throw new Error("No saved procedures found for this data model. Save procedures first.");
+    const capsuleProcedureDb = window.BoardWorldModel.openCapsuleProcedureDatabase();
+    const capsuleProcedures = await capsuleProcedureDb.procedures.toArray();
+    if (procedures.length === 0 && capsuleProcedures.length === 0) {
+      throw new Error("No saved procedures found. Scan and save procedures first.");
     }
 
     const cubeDb = window.BoardWorldModel.openCubeDatabase();
@@ -495,10 +497,18 @@ async function createAllEdges(modelId) {
     await cubeDb.cubeEdges.where("fromModelId").equals(modelId).delete();
     await procedureDb.procedureEdges.where("fromDefaultDatabase").equals(modelId).delete();
     await linkDb.deleteLinksForOwner("database", modelId, "usesCube");
+    const capsulePaths = [...new Set(capsuleProcedures.map((procedure) => procedure.capsulePath))];
+    await Promise.all(capsulePaths.map(async (capsulePath) => {
+      await linkDb.deleteLinksForOwner("capsule", capsulePath, "usesCube");
+      await linkDb.deleteLinksForOwner("capsule", capsulePath, "calls");
+      await capsuleProcedureDb.procedureEdges.where("fromCapsulePath").equals(capsulePath).delete();
+    }));
 
     let cubeEdgeCount = 0;
     let procedureEdgeCount = 0;
     let procedureCubeUseCount = 0;
+    let capsuleProcedureEdgeCount = 0;
+    let capsuleProcedureCubeUseCount = 0;
     for (const procedure of procedures) {
       cubeEdgeCount += await window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
         procedure.name,
@@ -513,11 +523,23 @@ async function createAllEdges(modelId) {
         procedure.defaultDatabase,
       );
     }
+    for (const procedure of capsuleProcedures) {
+      capsuleProcedureEdgeCount += await window.BoardWorldModel.createCapsuleProcedureEdgesFromCallProcedureWrapper(
+        procedure.name,
+        procedure.capsulePath,
+        modelId,
+      );
+      capsuleProcedureCubeUseCount += await window.BoardWorldModel.createCapsuleProcedureCubeUsesFromDataflowWrapper(
+        procedure.name,
+        procedure.capsulePath,
+        modelId,
+      );
+    }
 
     modelLine.textContent = `${modelId} · ${procedures.length} procedures`;
     output.className = "";
-    output.textContent = `Created ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges, and ${procedureCubeUseCount} procedure-cube links.`;
-    meta.textContent = "Edges and procedure-cube links rebuilt from saved procedure details";
+    output.textContent = `Created ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges, ${procedureCubeUseCount} procedure-cube links, ${capsuleProcedureEdgeCount} capsule-procedure edges, and ${capsuleProcedureCubeUseCount} capsule-procedure-cube links.`;
+    meta.textContent = "Edges and cube links rebuilt from saved procedure details";
   } catch (error) {
     renderError(error.message);
   }

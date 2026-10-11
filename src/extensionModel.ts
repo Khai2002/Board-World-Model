@@ -12,6 +12,8 @@ import { createCubeEdgesFromDataflow, testCubeEdges } from "./analysis/createCub
 import { loadCubeGraph } from "./graph/cubeGraph"
 import { createProcedureEdgesFromCallProcedure } from "./analysis/createProcedureEdges"
 import { createProcedureCubeUsesFromDataflow } from "./analysis/createProcedureCubeUses"
+import { createCapsuleProcedureCubeUsesFromDataflow } from "./analysis/createCapsuleProcedureCubeUses"
+import { createCapsuleProcedureEdgesFromCallProcedure } from "./analysis/createCapsuleProcedureEdges"
 import { loadProcedureGraph } from "./graph/procedureGraph"
 
 export type { ProcedureIdentifier } from "./utils/json"
@@ -108,6 +110,22 @@ export async function createProcedureCubeUsesFromDataflowWrapper(
     defaultDatabase: string,
 ): Promise<number> {
     return createProcedureCubeUsesFromDataflow(name, defaultDatabase)
+}
+
+export async function createCapsuleProcedureCubeUsesFromDataflowWrapper(
+    name: string,
+    capsulePath: string,
+    defaultDatabase: string,
+): Promise<number> {
+    return createCapsuleProcedureCubeUsesFromDataflow(name, capsulePath, defaultDatabase)
+}
+
+export async function createCapsuleProcedureEdgesFromCallProcedureWrapper(
+    name: string,
+    capsulePath: string,
+    defaultDatabase: string,
+): Promise<number> {
+    return createCapsuleProcedureEdgesFromCallProcedure(name, capsulePath, defaultDatabase)
 }
 
 function asProcedureJSON(data: unknown): ProcedureJSON {
@@ -224,6 +242,8 @@ declare global {
             createCubeEdgesFromDataflowWrapper: typeof createCubeEdgesFromDataflowWrapper
             createProcedureEdgesFromCallProcedureWrapper: typeof createProcedureEdgesFromCallProcedureWrapper
             createProcedureCubeUsesFromDataflowWrapper: typeof createProcedureCubeUsesFromDataflowWrapper
+            createCapsuleProcedureCubeUsesFromDataflowWrapper: typeof createCapsuleProcedureCubeUsesFromDataflowWrapper
+            createCapsuleProcedureEdgesFromCallProcedureWrapper: typeof createCapsuleProcedureEdgesFromCallProcedureWrapper
             CubeDatabase: typeof CubeDatabase
             loadCubeGraphWrapper: typeof loadCubeGraphWrapper
             loadProcedureGraphWrapper: typeof loadProcedureGraphWrapper
@@ -248,6 +268,8 @@ window.BoardWorldModel = {
     createCubeEdgesFromDataflowWrapper,
     createProcedureEdgesFromCallProcedureWrapper,
     createProcedureCubeUsesFromDataflowWrapper,
+    createCapsuleProcedureCubeUsesFromDataflowWrapper,
+    createCapsuleProcedureEdgesFromCallProcedureWrapper,
     CubeDatabase,
     loadCubeGraphWrapper,
     loadProcedureGraphWrapper,

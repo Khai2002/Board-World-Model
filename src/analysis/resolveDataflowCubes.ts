@@ -7,6 +7,10 @@ export type ResolvedDataflowCubes = {
     targetCubeId?: number
 }
 
+/**
+ * Resolves each dataflow step in a procedure to actual cube ids for its source values and
+ * target value, including indirect virtual-cube propagation across steps.
+ */
 export async function resolveDataflowCubes(
     procedure: Procedure,
     modelId: string,
@@ -87,6 +91,10 @@ export async function resolveDataflowCubes(
     return resolvedDataflows;
 }
 
+/**
+ * Extracts all single-letter variable names used in a dataflow expression and returns them
+ * without duplicates so they can be matched against layout block letters.
+ */
 export function extractVariables(expression: string): string[] {
     const matches = expression.match(/\b[a-zA-Z]\b/g)
     return [...new Set(matches ?? [])]

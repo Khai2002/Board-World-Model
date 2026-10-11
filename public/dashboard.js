@@ -230,7 +230,7 @@ function showDetails(title, data, viewState) {
   const graphData = data.cube || data.procedure;
   detailsHeading.textContent = title;
   currentDetailsJson = JSON.stringify(data, null, 2);
-  detailsSummary.textContent = graphData
+  detailsSummary.textContent = graphData || data.capsuleProcedure
     ? "Loading node connections..."
     : "JSON is available using Copy JSON.";
   detailsPanel.classList.toggle("graph-layout", Boolean(graphData));
@@ -272,6 +272,9 @@ function showDetails(title, data, viewState) {
   if (data.procedure) {
     renderProcedureGraph(data.procedure, requestId, viewState);
     void showProcedureUsageDetails(data.procedure);
+  }
+  if (data.capsuleProcedure) {
+    void showCapsuleProcedureUsageDetails(data.capsuleProcedure);
   }
 }
 
@@ -359,30 +362,86 @@ function renderUsageCategories(description, categories) {
   const total = categories.reduce((count, category) => count + category.items.length, 0);
   if (total === 0) {
     const emptyState = document.createElement("p");
-    emptyState.textContent = "No recorded procedure-cube links. Use Create all edges in the popup to build them.";
+    emptyState.textContent = "No recorded procedure-to-cube links. Use Create all edges in the popup to build them.";
     detailsSummary.appendChild(emptyState);
   }
 
   for (const category of categories) {
-    const heading = document.createElement("h3");
+    const section = document.createElement("details");
+    section.open = true;
+    section.style.marginBottom = "12px";
+
+    const heading = document.createElement("summary");
     heading.textContent = `${category.label} (${category.items.length})`;
-    detailsSummary.appendChild(heading);
-    if (category.items.length === 0) continue;
+    heading.style.cursor = "pointer";
+    heading.style.listStyle = "none";
+    heading.style.userSelect = "none";
+    heading.style.fontWeight = "700";
+    heading.style.padding = "4px 0";
+    heading.style.display = "list-item";
+    heading.title = "Click to expand or collapse";
+    section.appendChild(heading);
+    if (category.items.length === 0) {
+      const empty = document.createElement("p");
+      empty.style.marginTop = "8px";
+      empty.style.marginLeft = "16px";
+      empty.textContent = "None";
+      section.appendChild(empty);
+      detailsSummary.appendChild(section);
+      continue;
+    }
 
     const list = document.createElement("ul");
+    list.style.marginTop = "8px";
+    list.style.marginLeft = "16px";
     for (const item of category.items) {
       const entry = document.createElement("li");
-      entry.textContent = item.label;
+      if (item.onClick) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = item.label;
+        button.style.background = "none";
+        button.style.border = "none";
+        button.style.padding = "0";
+        button.style.textAlign = "left";
+        button.style.font = "inherit";
+        button.style.color = "#0f172a";
+        button.style.cursor = "pointer";
+        button.addEventListener("click", item.onClick);
+        entry.appendChild(button);
+      } else {
+        entry.textContent = item.label;
+      }
       if (item.detail) {
         const detail = document.createElement("small");
         detail.className = "graph-usage-detail";
+        detail.style.display = "block";
+        detail.style.fontSize = "11px";
+        detail.style.opacity = "0.75";
+        detail.style.wordBreak = "break-word";
         detail.textContent = item.detail;
         entry.appendChild(detail);
       }
       list.appendChild(entry);
     }
-    detailsSummary.appendChild(list);
+    section.appendChild(list);
+    detailsSummary.appendChild(section);
   }
+}
+
+function addUsageByAccess(categorized, access, item) {
+  if (access === "read" || access === "readwrite") categorized.read.push(item);
+  if (access === "write" || access === "readwrite") categorized.write.push(item);
+}
+
+function procedureDisplayLabel(procedure) {
+  if (!procedure) return "Unnamed procedure";
+  return procedure.description || procedure.oldDescription || procedure.name || "Unnamed procedure";
+}
+
+function capsuleProcedureDisplayLabel(procedure) {
+  if (!procedure) return "Unnamed capsule procedure";
+  return procedure.description || procedure.oldDescription || procedure.name || "Unnamed capsule procedure";
 }
 
 async function showCubeUsageDetails(cube) {
@@ -393,26 +452,61 @@ async function showCubeUsageDetails(cube) {
   try {
     const linkDb = openLinkDatabase();
     const procedureDb = openProcedureDatabase();
-    const [uses, procedures, metadata] = await Promise.all([
+    const capsuleProcedureDb = window.BoardWorldModel.openCapsuleProcedureDatabase();
+    const [uses, procedures, metadata, capsuleProcedures, capsuleProcedureMetadata] = await Promise.all([
       linkDb.links.where("[dstType+dstId+kind]").equals(["cube", cubeId, "usesCube"]).toArray(),
       procedureDb.procedures.toArray(),
       procedureDb.procedureMetadata.toArray(),
+      capsuleProcedureDb.procedures.toArray(),
+      capsuleProcedureDb.procedureMetadata.toArray(),
     ]);
     const proceduresById = new Map(procedures.map(procedure => [
       procedure.id,
       procedure,
     ]));
     const metadataById = new Map(metadata.map(procedure => [procedure.id, procedure]));
-    const categorized = { read: [], write: [], readwrite: [] };
+    const capsuleProceduresById = new Map(capsuleProcedures.map(procedure => [procedure.id, procedure]));
+    const capsuleProcedureMetadataById = new Map(capsuleProcedureMetadata.map(procedure => [procedure.id, procedure]));
+    const categorized = { read: [], write: [] };
     for (const use of uses) {
+      if (use.srcType === "capsuleProcedure") {
+        const capsuleProcedure = capsuleProceduresById.get(use.srcId);
+        const capsuleMetadata = capsuleProcedureMetadataById.get(use.srcId);
+        const description = capsuleProcedure?.description || capsuleProcedure?.oldDescription ||
+          capsuleMetadata?.description || capsuleMetadata?.oldDescription ||
+          capsuleProcedure?.name || capsuleMetadata?.name || "Unnamed capsule procedure";
+        addUsageByAccess(categorized, use.meta?.access, {
+          label: `Capsule procedure: ${description}`,
+          detail: use.ownerId,
+          onClick: () => {
+            const target = capsuleProcedure || capsuleMetadata;
+            if (!target) return;
+            showDetails(`Capsule procedure: ${description}`, {
+              metadata: target,
+              details: capsuleProcedure ?? null,
+              capsuleProcedure: capsuleProcedure ?? target,
+            });
+          },
+        });
+        continue;
+      }
       const procedure = proceduresById.get(use.srcId);
       const procedureMetadata = metadataById.get(use.srcId);
       const description = procedure?.description || procedure?.oldDescription ||
         procedureMetadata?.description || procedureMetadata?.oldDescription ||
         procedure?.name || procedureMetadata?.name || "Unnamed procedure";
-      categorized[use.meta?.access]?.push({
+      addUsageByAccess(categorized, use.meta?.access, {
         label: description,
         detail: use.ownerId,
+        onClick: () => {
+          const target = procedure || procedureMetadata;
+          if (!target) return;
+          showDetails(`Procedure: ${description}`, {
+            metadata: target,
+            details: procedure ?? null,
+            procedure: procedure ?? target,
+          });
+        },
       });
     }
 
@@ -420,7 +514,6 @@ async function showCubeUsageDetails(cube) {
     renderUsageCategories("Procedures referencing this cube:", [
       { label: "Read this cube", items: categorized.read },
       { label: "Write this cube", items: categorized.write },
-      { label: "Read and write this cube", items: categorized.readwrite },
     ]);
   } catch (error) {
     if (requestId !== selectionDetailsRequestId) return;
@@ -438,29 +531,183 @@ async function showProcedureUsageDetails(procedure) {
     const linkDb = openLinkDatabase();
     const procedureDb = openProcedureDatabase();
     const cubeDb = openCubeDatabase();
-    const [uses, cubes] = await Promise.all([
+    const [uses, cubes, edges, metadata, details] = await Promise.all([
       linkDb.links.where("[srcType+srcId+kind]").equals(["procedure", procedureId, "usesCube"]).toArray(),
       cubeDb.cubes.toArray(),
+      procedureDb.procedureEdges.toArray(),
+      procedureDb.procedureMetadata.toArray(),
+      procedureDb.procedures.toArray(),
     ]);
     const cubesById = new Map(cubes.map(cube => [cube.id, cube]));
-    const categorized = { read: [], write: [], readwrite: [] };
+    const proceduresById = new Map([...details, ...metadata].map(candidate => [candidate.id, candidate]));
+    const categorized = { read: [], write: [] };
     for (const use of uses) {
       const cube = cubesById.get(use.dstId);
-      categorized[use.meta?.access]?.push({
+      addUsageByAccess(categorized, use.meta?.access, {
         label: cube?.name || "Unnamed cube",
         detail: use.dstId,
+        onClick: () => {
+          if (!cube) return;
+          showDetails(`Cube: ${cube.name || "Unnamed cube"}`, { cube, relatedEdges: [] });
+        },
       });
     }
+    const callItems = edges
+      .filter(edge => edge.fromDefaultDatabase === procedure.defaultDatabase && edge.fromName === procedure.name)
+      .map(edge => {
+        const targetId = `${edge.toDefaultDatabase}:${edge.toName}`;
+        const target = proceduresById.get(targetId);
+        const label = procedureDisplayLabel(target) || `${edge.toName} (${edge.toDefaultDatabase})`;
+        return {
+          label,
+          detail: edge.id,
+          onClick: () => {
+            const procedureRecord = target || { defaultDatabase: edge.toDefaultDatabase, name: edge.toName, description: label };
+            showDetails(`Procedure: ${label}`, {
+              metadata: procedureRecord,
+              details: procedureRecord,
+              procedure: procedureRecord,
+            });
+          },
+        };
+      });
+    const calledBy = edges
+      .filter(edge => edge.toDefaultDatabase === procedure.defaultDatabase && edge.toName === procedure.name)
+      .map(edge => {
+        const callerId = `${edge.fromDefaultDatabase}:${edge.fromName}`;
+        const caller = proceduresById.get(callerId);
+        const label = procedureDisplayLabel(caller) || `${edge.fromName} (${edge.fromDefaultDatabase})`;
+        return {
+          label,
+          detail: edge.id,
+          onClick: () => {
+            const procedureRecord = caller || { defaultDatabase: edge.fromDefaultDatabase, name: edge.fromName, description: label };
+            showDetails(`Procedure: ${label}`, {
+              metadata: procedureRecord,
+              details: procedureRecord,
+              procedure: procedureRecord,
+            });
+          },
+        };
+      });
 
     if (requestId !== selectionDetailsRequestId) return;
-    renderUsageCategories("Cubes used directly by this procedure:", [
+    renderUsageCategories("Connections for this procedure:", [
       { label: "Cubes read", items: categorized.read },
       { label: "Cubes written", items: categorized.write },
-      { label: "Cubes read and written", items: categorized.readwrite },
+      { label: "Calls", items: callItems },
+      { label: "Called by", items: calledBy },
     ]);
   } catch (error) {
     if (requestId !== selectionDetailsRequestId) return;
     console.error("Could not load procedure cube usage:", error);
+    detailsSummary.textContent = `Could not load cube usage: ${error.message}`;
+  }
+}
+
+async function showCapsuleProcedureUsageDetails(procedure) {
+  const requestId = ++selectionDetailsRequestId;
+  try {
+    const linkDb = openLinkDatabase();
+    const cubeDb = openCubeDatabase();
+    const procedureDb = openProcedureDatabase();
+    const capsuleProcedureDb = window.BoardWorldModel.openCapsuleProcedureDatabase();
+    const [uses, cubes, callLinks, capsuleProcedureEdges, procedures, metadata, capsuleProcedures, capsuleMetadata] = await Promise.all([
+      linkDb.links.where("[srcType+srcId+kind]")
+        .equals(["capsuleProcedure", procedure.id, "usesCube"]).toArray(),
+      cubeDb.cubes.toArray(),
+      linkDb.links.where("[srcType+srcId+kind]")
+        .equals(["capsuleProcedure", procedure.id, "calls"]).toArray(),
+      capsuleProcedureDb.procedureEdges.toArray(),
+      procedureDb.procedures.toArray(),
+      procedureDb.procedureMetadata.toArray(),
+      capsuleProcedureDb.procedures.toArray(),
+      capsuleProcedureDb.procedureMetadata.toArray(),
+    ]);
+    const cubesById = new Map(cubes.map(cube => [cube.id, cube]));
+    const proceduresById = new Map(procedures.map(candidate => [candidate.id, candidate]));
+    const metadataById = new Map(metadata.map(candidate => [candidate.id, candidate]));
+    const capsuleProceduresById = new Map([...capsuleProcedures, ...capsuleMetadata].map(candidate => [candidate.id, candidate]));
+    const categorized = { read: [], write: [] };
+    for (const use of uses) {
+      const cube = cubesById.get(use.dstId);
+      addUsageByAccess(categorized, use.meta?.access, {
+        label: cube?.name || "Unnamed cube",
+        detail: use.dstId,
+        onClick: () => {
+          if (!cube) return;
+          showDetails(`Cube: ${cube.name || "Unnamed cube"}`, { cube, relatedEdges: [] });
+        },
+      });
+    }
+    const normalProcedureCalls = callLinks
+      .filter(link => link.dstType === "procedure")
+      .map(link => {
+        const target = proceduresById.get(link.dstId) || metadataById.get(link.dstId);
+        const label = procedureDisplayLabel(target) || link.dstId;
+        return {
+          label,
+          detail: link.dstId,
+          onClick: () => {
+            const targetProcedure = target || { defaultDatabase: "", name: link.dstId, description: label };
+            showDetails(`Procedure: ${label}`, {
+              metadata: targetProcedure,
+              details: targetProcedure,
+              procedure: targetProcedure,
+            });
+          },
+        };
+      });
+    const capsuleProcedureCalls = capsuleProcedureEdges
+      .filter(edge => edge.fromCapsulePath === procedure.capsulePath && edge.fromName === procedure.name)
+      .map(edge => {
+        const targetId = `${edge.toCapsulePath}:${edge.toName}`;
+        const target = capsuleProceduresById.get(targetId);
+        const label = capsuleProcedureDisplayLabel(target) || `${edge.toName} (${edge.toCapsulePath})`;
+        return {
+          label,
+          detail: edge.id,
+          onClick: () => {
+            const targetProcedure = target || { name: edge.toName, capsulePath: edge.toCapsulePath, description: label };
+            showDetails(`Capsule procedure: ${label}`, {
+              metadata: targetProcedure,
+              details: targetProcedure,
+              capsuleProcedure: targetProcedure,
+            });
+          },
+        };
+      });
+    const calledBy = capsuleProcedureEdges
+      .filter(edge => edge.toCapsulePath === procedure.capsulePath && edge.toName === procedure.name)
+      .map(edge => {
+        const sourceId = `${edge.fromCapsulePath}:${edge.fromName}`;
+        const source = capsuleProceduresById.get(sourceId);
+        const label = capsuleProcedureDisplayLabel(source) || `${edge.fromName} (${edge.fromCapsulePath})`;
+        return {
+          label,
+          detail: edge.id,
+          onClick: () => {
+            const targetProcedure = source || { name: edge.fromName, capsulePath: edge.fromCapsulePath, description: label };
+            showDetails(`Capsule procedure: ${label}`, {
+              metadata: targetProcedure,
+              details: targetProcedure,
+              capsuleProcedure: targetProcedure,
+            });
+          },
+        };
+      });
+
+    if (requestId !== selectionDetailsRequestId) return;
+    renderUsageCategories("Connections for this capsule procedure:", [
+      { label: "Cubes read", items: categorized.read },
+      { label: "Cubes written", items: categorized.write },
+      { label: "Calls to normal procedures", items: normalProcedureCalls },
+      { label: "Calls to capsule procedures", items: capsuleProcedureCalls },
+      { label: "Called by", items: calledBy },
+    ]);
+  } catch (error) {
+    if (requestId !== selectionDetailsRequestId) return;
+    console.error("Could not load capsule-procedure cube usage:", error);
     detailsSummary.textContent = `Could not load cube usage: ${error.message}`;
   }
 }
@@ -1197,9 +1444,10 @@ async function loadCapsulesAndScreens() {
 async function loadCapsuleProcedures() {
   try {
     const db = window.BoardWorldModel.openCapsuleProcedureDatabase();
-    const [metadata, details] = await Promise.all([
+    const [metadata, details, capsuleProcedureEdges] = await Promise.all([
       db.procedureMetadata.toArray(),
       db.procedures.toArray(),
+      db.procedureEdges.toArray(),
     ]);
     const detailsById = new Map(details.map(procedure => [procedure.id, procedure]));
     capsuleProceduresList.replaceChildren();
@@ -1231,7 +1479,15 @@ async function loadCapsuleProcedures() {
       item.appendChild(capsulePath);
       makeClickableItem(item, () => showDetails(
         `Capsule procedure: ${procedure.description || procedure.name}`,
-        { metadata: procedure, details: detail ?? null },
+        {
+          metadata: procedure,
+          details: detail ?? null,
+          capsuleProcedure: detail ?? procedure,
+          relatedEdges: capsuleProcedureEdges.filter(edge =>
+            edge.fromCapsulePath === procedure.capsulePath && edge.fromName === procedure.name ||
+            edge.toCapsulePath === procedure.capsulePath && edge.toName === procedure.name,
+          ),
+        },
       ));
       capsuleProceduresList.appendChild(item);
     }

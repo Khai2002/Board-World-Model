@@ -5,6 +5,10 @@ import CubeDatabase, { type CubeEdge, type CubeEdgeProcedure } from "../database
 import { extractVariables, resolveDataflowCubes } from "./resolveDataflowCubes";
 
 
+/**
+ * Debug helper that inspects a procedure's dataflow steps and logs the extracted
+ * source/target cube information before any edge writes occur.
+ */
 export async function testCubeEdges(
   name: string,
   defaultDatabase: string,
@@ -55,6 +59,10 @@ export async function testCubeEdges(
 
 }
 
+/**
+ * Derives cube-to-cube dependency edges from a procedure's dataflow steps and merges them
+ * into the cube edge store for the target model. Returns the number of new edges generated.
+ */
 export async function createCubeEdgesFromDataflow(
   name: string,
   defaultDatabase: string,

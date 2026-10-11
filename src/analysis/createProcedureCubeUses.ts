@@ -4,6 +4,11 @@ import ProcedureDatabase, { type ProcedureRecord } from "../database/ProcedureDa
 import Procedure from "../procedure/Procedure"
 import { resolveDataflowCubes } from "./resolveDataflowCubes"
 
+/**
+ * Recomputes which cubes a procedure reads or writes by resolving all dataflow steps,
+ * then stores the resulting usesCube links for that procedure in the link database.
+ * Returns the number of cube links created.
+ */
 export async function createProcedureCubeUsesFromDataflow(
     name: string,
     defaultDatabase: string,
