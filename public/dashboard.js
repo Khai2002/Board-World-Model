@@ -612,7 +612,8 @@ async function showCapsuleProcedureUsageDetails(procedure) {
     const cubeDb = openCubeDatabase();
     const procedureDb = openProcedureDatabase();
     const capsuleProcedureDb = window.BoardWorldModel.openCapsuleProcedureDatabase();
-    const [uses, cubes, callLinks, capsuleProcedureEdges, procedures, metadata, capsuleProcedures, capsuleMetadata] = await Promise.all([
+    const screenDb = window.BoardWorldModel.openScreenDatabase();
+    const [uses, cubes, callLinks, capsuleProcedureEdges, procedures, metadata, capsuleProcedures, capsuleMetadata, screenLinks, screens, screenDetails] = await Promise.all([
       linkDb.links.where("[srcType+srcId+kind]")
         .equals(["capsuleProcedure", procedure.id, "usesCube"]).toArray(),
       cubeDb.cubes.toArray(),
@@ -623,11 +624,17 @@ async function showCapsuleProcedureUsageDetails(procedure) {
       procedureDb.procedureMetadata.toArray(),
       capsuleProcedureDb.procedures.toArray(),
       capsuleProcedureDb.procedureMetadata.toArray(),
+      linkDb.links.where("[dstType+dstId+kind]")
+        .equals(["capsuleProcedure", procedure.id, "contains"]).toArray(),
+      screenDb.screenMetadata.toArray(),
+      screenDb.screenDetails.toArray(),
     ]);
     const cubesById = new Map(cubes.map(cube => [cube.id, cube]));
     const proceduresById = new Map(procedures.map(candidate => [candidate.id, candidate]));
     const metadataById = new Map(metadata.map(candidate => [candidate.id, candidate]));
     const capsuleProceduresById = new Map([...capsuleProcedures, ...capsuleMetadata].map(candidate => [candidate.id, candidate]));
+    const screensByDetailId = new Map(screens.map(screen => [`${screen.capsule}:${screen.id}`, screen]));
+    const screenDetailsById = new Map(screenDetails.map(screen => [screen.id, screen]));
     const categorized = { read: [], write: [] };
     for (const use of uses) {
       const cube = cubesById.get(use.dstId);
@@ -696,6 +703,22 @@ async function showCapsuleProcedureUsageDetails(procedure) {
           },
         };
       });
+    const screensCalling = screenLinks.map(link => {
+      const screen = screensByDetailId.get(link.srcId);
+      const detail = screenDetailsById.get(link.srcId);
+      const label = screen?.text || detail?.screenId || link.srcId;
+      return {
+        label,
+        detail: screen?.capsule || "Screen",
+        onClick: () => {
+          if (screen) {
+            void selectScreen(screen);
+          } else if (detail) {
+            showDetails(`Screen: ${label}`, detail.data);
+          }
+        },
+      };
+    });
 
     if (requestId !== selectionDetailsRequestId) return;
     renderUsageCategories("Connections for this capsule procedure:", [
@@ -704,6 +727,7 @@ async function showCapsuleProcedureUsageDetails(procedure) {
       { label: "Calls to normal procedures", items: normalProcedureCalls },
       { label: "Calls to capsule procedures", items: capsuleProcedureCalls },
       { label: "Called by", items: calledBy },
+      { label: "Called by screens", items: screensCalling },
     ]);
   } catch (error) {
     if (requestId !== selectionDetailsRequestId) return;
@@ -1163,30 +1187,70 @@ async function selectScreen(screen) {
       error: "Screen details are not stored. Scan this capsule from the popup first.",
     };
     showDetails(title, screenData);
-    const [links, procedures] = await Promise.all([
+    const [links, procedures, metadata] = await Promise.all([
       detail
         ? openLinkDatabase().links.where("[srcType+srcId+kind]")
           .equals(["screen", detail.id, "contains"]).toArray()
         : Promise.resolve([]),
       window.BoardWorldModel.openCapsuleProcedureDatabase().procedures
         .where("capsulePath").equals(screen.capsule).toArray(),
+      window.BoardWorldModel.openCapsuleProcedureDatabase().procedureMetadata
+        .where("capsulePath").equals(screen.capsule).toArray(),
     ]);
-    const proceduresById = new Map(procedures.map(procedure => [procedure.id, procedure]));
+    const proceduresById = new Map(metadata.map(procedure => [procedure.id, procedure]));
+    for (const procedure of procedures) proceduresById.set(procedure.id, procedure);
     const relatedProcedures = links.map(link => proceduresById.get(link.dstId) || { id: link.dstId });
-    const heading = document.createElement("h3");
+    const procedureSection = document.createElement("details");
+    procedureSection.open = true;
+    const heading = document.createElement("summary");
     heading.textContent = `Contained capsule procedures (${relatedProcedures.length})`;
-    detailsSummary.replaceChildren(heading);
+    heading.style.cursor = "pointer";
+    heading.style.listStyle = "none";
+    heading.style.userSelect = "none";
+    heading.style.fontWeight = "700";
+    heading.style.padding = "4px 0";
+    heading.style.display = "list-item";
+    heading.title = "Click to expand or collapse";
+    procedureSection.appendChild(heading);
     if (relatedProcedures.length > 0) {
       const list = document.createElement("ul");
       for (const procedure of relatedProcedures) {
         const item = document.createElement("li");
         item.textContent = procedure.description || procedure.name || procedure.id;
+        makeClickableItem(item, () => { void selectCapsuleProcedureDetails(procedure); });
         list.appendChild(item);
       }
-      detailsSummary.appendChild(list);
+      procedureSection.appendChild(list);
     }
+    detailsSummary.replaceChildren(procedureSection);
   } catch (error) {
     status.textContent = `Could not read screen details: ${error.message}`;
+  }
+}
+
+async function selectCapsuleProcedureDetails(procedure) {
+  try {
+    const db = window.BoardWorldModel.openCapsuleProcedureDatabase();
+    const [metadata, detail, edges] = await Promise.all([
+      db.procedureMetadata.get(procedure.id),
+      db.procedures.get(procedure.id),
+      db.procedureEdges.toArray(),
+    ]);
+    const selectedProcedure = detail || metadata || procedure;
+    showDetails(
+      `Capsule procedure: ${selectedProcedure.description || selectedProcedure.name || selectedProcedure.id}`,
+      {
+        metadata: metadata || procedure,
+        details: detail ?? null,
+        capsuleProcedure: selectedProcedure,
+        relatedEdges: edges.filter(edge =>
+          (edge.fromCapsulePath === selectedProcedure.capsulePath && edge.fromName === selectedProcedure.name) ||
+          (edge.toCapsulePath === selectedProcedure.capsulePath && edge.toName === selectedProcedure.name),
+        ),
+      },
+    );
+  } catch (error) {
+    status.textContent = `Could not read capsule procedure details: ${error.message}`;
   }
 }
 
@@ -1467,10 +1531,9 @@ async function loadCapsulesAndScreens() {
 async function loadCapsuleProcedures() {
   try {
     const db = window.BoardWorldModel.openCapsuleProcedureDatabase();
-    const [metadata, details, capsuleProcedureEdges] = await Promise.all([
+    const [metadata, details] = await Promise.all([
       db.procedureMetadata.toArray(),
       db.procedures.toArray(),
-      db.procedureEdges.toArray(),
     ]);
     const detailsById = new Map(details.map(procedure => [procedure.id, procedure]));
     capsuleProceduresList.replaceChildren();
@@ -1500,18 +1563,7 @@ async function loadCapsuleProcedures() {
       const capsulePath = document.createElement("div");
       capsulePath.textContent = procedure.capsulePath;
       item.appendChild(capsulePath);
-      makeClickableItem(item, () => showDetails(
-        `Capsule procedure: ${procedure.description || procedure.name}`,
-        {
-          metadata: procedure,
-          details: detail ?? null,
-          capsuleProcedure: detail ?? procedure,
-          relatedEdges: capsuleProcedureEdges.filter(edge =>
-            edge.fromCapsulePath === procedure.capsulePath && edge.fromName === procedure.name ||
-            edge.toCapsulePath === procedure.capsulePath && edge.toName === procedure.name,
-          ),
-        },
-      ));
+      makeClickableItem(item, () => { void selectCapsuleProcedureDetails(procedure); });
       capsuleProceduresList.appendChild(item);
     }
 
