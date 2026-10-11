@@ -1157,11 +1157,34 @@ function filterList(list, query) {
 async function selectScreen(screen) {
   const title = `Screen: ${screen.text || "Unnamed screen"}`;
   try {
-    const detail = await window.BoardWorldModel.openScreenDatabase()
-      .getScreenDetail(screen.capsule, screen.id);
-    showDetails(title, detail?.data ?? {
+    const screenDb = window.BoardWorldModel.openScreenDatabase();
+    const detail = await screenDb.getScreenDetail(screen.capsule, screen.id);
+    const screenData = detail?.data ?? {
       error: "Screen details are not stored. Scan this capsule from the popup first.",
-    });
+    };
+    showDetails(title, screenData);
+    const [links, procedures] = await Promise.all([
+      detail
+        ? openLinkDatabase().links.where("[srcType+srcId+kind]")
+          .equals(["screen", detail.id, "contains"]).toArray()
+        : Promise.resolve([]),
+      window.BoardWorldModel.openCapsuleProcedureDatabase().procedures
+        .where("capsulePath").equals(screen.capsule).toArray(),
+    ]);
+    const proceduresById = new Map(procedures.map(procedure => [procedure.id, procedure]));
+    const relatedProcedures = links.map(link => proceduresById.get(link.dstId) || { id: link.dstId });
+    const heading = document.createElement("h3");
+    heading.textContent = `Contained capsule procedures (${relatedProcedures.length})`;
+    detailsSummary.replaceChildren(heading);
+    if (relatedProcedures.length > 0) {
+      const list = document.createElement("ul");
+      for (const procedure of relatedProcedures) {
+        const item = document.createElement("li");
+        item.textContent = procedure.description || procedure.name || procedure.id;
+        list.appendChild(item);
+      }
+      detailsSummary.appendChild(list);
+    }
   } catch (error) {
     status.textContent = `Could not read screen details: ${error.message}`;
   }

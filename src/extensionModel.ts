@@ -14,6 +14,7 @@ import { createProcedureEdgesFromCallProcedure } from "./analysis/createProcedur
 import { createProcedureCubeUsesFromDataflow } from "./analysis/createProcedureCubeUses"
 import { createCapsuleProcedureCubeUsesFromDataflow } from "./analysis/createCapsuleProcedureCubeUses"
 import { createCapsuleProcedureEdgesFromCallProcedure } from "./analysis/createCapsuleProcedureEdges"
+import { createScreenCapsuleProcedureLinks } from "./analysis/createScreenCapsuleProcedureLinks"
 import { loadProcedureGraph } from "./graph/procedureGraph"
 
 export type { ProcedureIdentifier } from "./utils/json"
@@ -126,6 +127,10 @@ export async function createCapsuleProcedureEdgesFromCallProcedureWrapper(
     defaultDatabase: string,
 ): Promise<number> {
     return createCapsuleProcedureEdgesFromCallProcedure(name, capsulePath, defaultDatabase)
+}
+
+export async function createScreenCapsuleProcedureLinksWrapper(capsulePath: string): Promise<number> {
+    return createScreenCapsuleProcedureLinks(capsulePath)
 }
 
 function asProcedureJSON(data: unknown): ProcedureJSON {
@@ -244,6 +249,7 @@ declare global {
             createProcedureCubeUsesFromDataflowWrapper: typeof createProcedureCubeUsesFromDataflowWrapper
             createCapsuleProcedureCubeUsesFromDataflowWrapper: typeof createCapsuleProcedureCubeUsesFromDataflowWrapper
             createCapsuleProcedureEdgesFromCallProcedureWrapper: typeof createCapsuleProcedureEdgesFromCallProcedureWrapper
+            createScreenCapsuleProcedureLinksWrapper: typeof createScreenCapsuleProcedureLinksWrapper
             CubeDatabase: typeof CubeDatabase
             loadCubeGraphWrapper: typeof loadCubeGraphWrapper
             loadProcedureGraphWrapper: typeof loadProcedureGraphWrapper
@@ -270,6 +276,7 @@ window.BoardWorldModel = {
     createProcedureCubeUsesFromDataflowWrapper,
     createCapsuleProcedureCubeUsesFromDataflowWrapper,
     createCapsuleProcedureEdgesFromCallProcedureWrapper,
+    createScreenCapsuleProcedureLinksWrapper,
     CubeDatabase,
     loadCubeGraphWrapper,
     loadProcedureGraphWrapper,

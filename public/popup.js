@@ -14,6 +14,7 @@ document.getElementById("btnCapsuleProcedures").addEventListener("click", () =>
 document.getElementById("btnCubes").addEventListener("click", () => withSelectedDatabase(saveCubes));
 document.getElementById("btnProcedures").addEventListener("click", () => withSelectedDatabase(saveProcedures));
 document.getElementById("btnEdges").addEventListener("click", () => withSelectedDatabase(createAllEdges));
+document.getElementById("btnCapsuleEdges").addEventListener("click", createCapsuleAndScreenEdges);
 document.getElementById("btnDashboard").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 });
@@ -80,21 +81,28 @@ async function scanCapsuleScreens(capsules) {
   const scans = [];
   let screenCount = 0;
   let detailCount = 0;
+  let drillCount = 0;
+  const failures = [];
 
   for (const [index, capsule] of capsules.entries()) {
     modelLine.textContent = `Scanning ${index + 1}/${capsules.length}: ${capsule.name}`;
-    const response = await sendToContentScript({
-      type: "CALL",
-      endpoint: "getSitemap",
-      params: { path: capsule.path },
-    });
-    if (!response?.success) {
-      throw new Error(response?.error || `Could not get sitemap for ${capsule.path}.`);
+    let response;
+    try {
+      response = await sendToContentScript({
+        type: "CALL",
+        endpoint: "getSitemap",
+        params: { path: capsule.path },
+      });
+      if (!response?.success) throw new Error(response?.error || "Request failed.");
+    } catch (error) {
+      failures.push(`${capsule.name || capsule.path}: sitemap: ${error.message}`);
+      continue;
     }
 
     const sitemap = response.result.data;
     if (!sitemap || !Array.isArray(sitemap.items)) {
-      throw new Error(`The sitemap response for ${capsule.path} is not a valid list.`);
+      failures.push(`${capsule.name || capsule.path}: invalid sitemap response`);
+      continue;
     }
 
     const screens = sitemap.items.filter((screen) => screen.type === 1);
@@ -104,32 +112,70 @@ async function scanCapsuleScreens(capsules) {
       const batch = screens.slice(index, index + SCREEN_DETAIL_BATCH_SIZE);
       modelLine.textContent = `Loading screen details ${capsuleDetailCount + 1}/${screens.length}: ${capsule.name}`;
       const batchDetails = await Promise.all(batch.map(async (screen) => {
-        const detailResponse = await sendToContentScript({
-          type: "CALL",
-          endpoint: "getScreen",
-          params: {},
-          body: {
-            disableRefreshOnOpen: false,
-            capsulePathSource: capsule.path,
-            screenArgs: {
-              discriminator: "ScreenArgsDto",
-              cpsPath: capsule.path,
-              screenId: screen.id,
+        const screenLabel = screen.text || screen.id;
+        let detailResponse;
+        try {
+          detailResponse = await sendToContentScript({
+            type: "CALL",
+            endpoint: "getScreen",
+            params: {},
+            body: {
+              disableRefreshOnOpen: false,
+              capsulePathSource: capsule.path,
+              screenArgs: {
+                discriminator: "ScreenArgsDto",
+                cpsPath: capsule.path,
+                screenId: screen.id,
+              },
+              isFirstOpening: false,
+              isInEdit: false,
             },
-            isFirstOpening: false,
-            isInEdit: false,
-          },
-        });
-        if (!detailResponse?.success) {
-          throw new Error(
-            detailResponse?.error || `Could not get screen details for ${screen.text || screen.id}.`,
-          );
+          });
+          if (!detailResponse?.success) throw new Error(detailResponse?.error || "Request failed.");
+        } catch (error) {
+          failures.push(`${screenLabel}: screen details: ${error.message}`);
+          return null;
         }
-        return { screenId: screen.id, data: detailResponse.result.data };
+
+        let screenDrills = [];
+        try {
+          const validationResponse = await sendToContentScript({
+            type: "CALL",
+            endpoint: "validateScreenNavigation",
+            params: { path: capsule.path, screenId: screen.id },
+          });
+          if (!validationResponse?.success) {
+            throw new Error(validationResponse?.error || "Request failed.");
+          }
+          const validatedScreenId = getValidatedScreenId(validationResponse.result.data);
+          if (validatedScreenId === screen.id) {
+            const drillResponse = await sendToContentScript({
+              type: "CALL",
+              endpoint: "getScreenDrills",
+              params: { path: capsule.path, screenId: screen.id },
+            });
+            if (!drillResponse?.success) throw new Error(drillResponse?.error || "Request failed.");
+            screenDrills = drillResponse.result.data ?? [];
+            drillCount += 1;
+          }
+        } catch (error) {
+          failures.push(`${screenLabel}: drill discovery: ${error.message}`);
+        }
+
+        const screenData = detailResponse.result.data;
+        const data = Array.isArray(screenData)
+          ? screenData.map(item => item && typeof item === "object"
+            ? { ...item, screenDrills }
+            : item)
+          : screenData && typeof screenData === "object"
+            ? { ...screenData, screenDrills }
+            : { data: screenData, screenDrills };
+        return { screenId: screen.id, data };
       }));
-      screenDetails.push(...batchDetails);
-      capsuleDetailCount += batchDetails.length;
-      detailCount += batchDetails.length;
+      const successfulDetails = batchDetails.filter(Boolean);
+      screenDetails.push(...successfulDetails);
+      capsuleDetailCount += successfulDetails.length;
+      detailCount += successfulDetails.length;
     }
 
     screenCount += screens.length;
@@ -140,7 +186,30 @@ async function scanCapsuleScreens(capsules) {
   modelLine.textContent = `${capsules.length} capsules · ${screenCount} screens stored`;
   output.className = "";
   output.textContent = JSON.stringify(capsules, null, 2);
-  meta.textContent = `${detailCount} screen details saved`;
+  meta.textContent = `${detailCount}/${screenCount} screen details saved · ${drillCount} drill payloads loaded · ${failures.length} scan errors`;
+  if (failures.length > 0) {
+    output.textContent += `\n\nScan errors (first 20):\n${failures.slice(0, 20).join("\n")}`;
+  }
+}
+
+function getValidatedScreenId(data) {
+  if (typeof data === "string") return data;
+  if (!data || typeof data !== "object") return undefined;
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const id = getValidatedScreenId(item);
+      if (id) return id;
+    }
+    return undefined;
+  }
+  for (const key of ["screenId", "id"]) {
+    if (typeof data[key] === "string") return data[key];
+  }
+  for (const key of ["data", "result", "screen"]) {
+    const id = getValidatedScreenId(data[key]);
+    if (id) return id;
+  }
+  return undefined;
 }
 
 async function scanCapsuleProcedures(capsules) {
@@ -488,7 +557,9 @@ async function createAllEdges(modelId) {
     );
     const capsuleProcedureDb = window.BoardWorldModel.openCapsuleProcedureDatabase();
     const capsuleProcedures = await capsuleProcedureDb.procedures.toArray();
-    if (procedures.length === 0 && capsuleProcedures.length === 0) {
+    const screenDb = window.BoardWorldModel.openScreenDatabase();
+    const storedCapsules = await screenDb.capsule.toArray();
+    if (procedures.length === 0 && capsuleProcedures.length === 0 && storedCapsules.length === 0) {
       throw new Error("No saved procedures found. Scan and save procedures first.");
     }
 
@@ -509,6 +580,7 @@ async function createAllEdges(modelId) {
     let procedureCubeUseCount = 0;
     let capsuleProcedureEdgeCount = 0;
     let capsuleProcedureCubeUseCount = 0;
+    let screenProcedureLinkCount = 0;
     for (const procedure of procedures) {
       cubeEdgeCount += await window.BoardWorldModel.createCubeEdgesFromDataflowWrapper(
         procedure.name,
@@ -535,11 +607,86 @@ async function createAllEdges(modelId) {
         modelId,
       );
     }
+    for (const capsule of storedCapsules) {
+      screenProcedureLinkCount += await window.BoardWorldModel.createScreenCapsuleProcedureLinksWrapper(
+        capsule.path,
+      );
+    }
 
     modelLine.textContent = `${modelId} · ${procedures.length} procedures`;
     output.className = "";
-    output.textContent = `Created ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges, ${procedureCubeUseCount} procedure-cube links, ${capsuleProcedureEdgeCount} capsule-procedure edges, and ${capsuleProcedureCubeUseCount} capsule-procedure-cube links.`;
-    meta.textContent = "Edges and cube links rebuilt from saved procedure details";
+    output.textContent = `Created ${cubeEdgeCount} cube edges, ${procedureEdgeCount} procedure edges, ${procedureCubeUseCount} procedure-cube links, ${capsuleProcedureEdgeCount} capsule-procedure edges, ${capsuleProcedureCubeUseCount} capsule-procedure-cube links, and ${screenProcedureLinkCount} screen-to-capsule-procedure links.`;
+    meta.textContent = "Edges and links rebuilt from saved procedure and screen details";
+  } catch (error) {
+    renderError(error.message);
+  }
+}
+
+async function createCapsuleAndScreenEdges() {
+  try {
+    const capsuleProcedureDb = window.BoardWorldModel.openCapsuleProcedureDatabase();
+    const screenDb = window.BoardWorldModel.openScreenDatabase();
+    const [capsuleProcedures, procedureMetadata, storedCapsules] = await Promise.all([
+      capsuleProcedureDb.procedures.toArray(),
+      capsuleProcedureDb.procedureMetadata.toArray(),
+      screenDb.capsule.toArray(),
+    ]);
+    const metadataById = new Map(procedureMetadata.map(procedure => [procedure.id, procedure]));
+    const capsulePaths = [...new Set([
+      ...capsuleProcedures.map(procedure => procedure.capsulePath),
+      ...procedureMetadata.map(procedure => procedure.capsulePath),
+      ...storedCapsules.map(capsule => capsule.path),
+    ])];
+    if (capsulePaths.length === 0) {
+      throw new Error("No saved capsule procedures or screens found. Scan capsules first.");
+    }
+
+    const linkDb = window.BoardWorldModel.openLinkDatabase();
+    await Promise.all(capsulePaths.map(async capsulePath => {
+      await linkDb.deleteLinksForOwner("capsule", capsulePath, "calls");
+      await linkDb.deleteLinksForOwner("capsule", capsulePath, "usesCube");
+      await capsuleProcedureDb.procedureEdges
+        .where("fromCapsulePath").equals(capsulePath).delete();
+    }));
+
+    let capsuleProcedureEdgeCount = 0;
+    let capsuleProcedureCubeUseCount = 0;
+    let screenProcedureLinkCount = 0;
+    let proceduresWithoutDatabase = 0;
+    for (const procedure of capsuleProcedures) {
+      const metadata = metadataById.get(procedure.id);
+      const defaultDatabase = typeof procedure.defaultDatabase === "string" && procedure.defaultDatabase.length > 0
+        ? procedure.defaultDatabase
+        : typeof metadata?.defaultDatabase === "string" && metadata.defaultDatabase.length > 0
+          ? metadata.defaultDatabase
+          : typeof procedure.metadata?.defaultDatabase === "string"
+            ? procedure.metadata.defaultDatabase
+            : "";
+      if (!defaultDatabase) proceduresWithoutDatabase += 1;
+
+      capsuleProcedureEdgeCount += await window.BoardWorldModel.createCapsuleProcedureEdgesFromCallProcedureWrapper(
+        procedure.name,
+        procedure.capsulePath,
+        defaultDatabase,
+      );
+      if (defaultDatabase) {
+        capsuleProcedureCubeUseCount += await window.BoardWorldModel.createCapsuleProcedureCubeUsesFromDataflowWrapper(
+          procedure.name,
+          procedure.capsulePath,
+          defaultDatabase,
+        );
+      }
+    }
+    for (const capsulePath of capsulePaths) {
+      screenProcedureLinkCount += await window.BoardWorldModel.createScreenCapsuleProcedureLinksWrapper(capsulePath);
+    }
+
+    modelLine.textContent = `${capsuleProcedures.length} capsule procedures · ${storedCapsules.length} capsules`;
+    output.className = "";
+    output.textContent = `Created ${capsuleProcedureEdgeCount} capsule-procedure edges, ${capsuleProcedureCubeUseCount} capsule-procedure-cube links, and ${screenProcedureLinkCount} screen-to-capsule-procedure links.`;
+    meta.textContent = proceduresWithoutDatabase > 0
+      ? `${proceduresWithoutDatabase} capsule procedures had no saved database; cube-use links were skipped for them.`
+      : "Edges and links rebuilt from saved capsule procedure and screen details";
   } catch (error) {
     renderError(error.message);
   }
